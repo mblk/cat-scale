@@ -1,3 +1,8 @@
+# custom rules
+cat_scale/version.txt
+cat_scale/sdkconfig.*
+
+# default below
 .config
 *.o
 *.pyc

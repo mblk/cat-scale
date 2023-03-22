@@ -16,6 +16,7 @@
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <freertos/message_buffer.h>
 
 #include <esp_system.h>
 #include <esp_log.h>
@@ -23,7 +24,33 @@
 
 #include <driver/i2c.h>
 
+
+
+
+typedef struct sensor_data {
+    struct timeval time;
+    uint32_t weight_raw;
+    double weight;
+    double temperature;
+    double pressure;
+    double humidity;
+    uint32_t co2;
+    uint32_t tvoc;
+} sensor_data_t;
+
+typedef struct {
+    double setup_time;
+    double poo_time;
+    double cleanup_time;
+    double cat_weight;
+    double poo_weight;
+} measurement_t;
+
+
+
 static const char *TAG = "sensors";
+
+static MessageBufferHandle_t measurement_message_buffer = NULL;
 
 static esp_err_t i2c_master_init(void)
 {
@@ -61,6 +88,9 @@ esp_err_t sensors_init()
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
     ESP_LOGI(TAG, "sensors_init");
 
+    measurement_message_buffer = xMessageBufferCreate(1024);
+    assert(measurement_message_buffer);
+
     // GPIO sensors.
     ESP_ERROR_CHECK(hx711_init());
     
@@ -74,17 +104,6 @@ esp_err_t sensors_init()
 
     return ESP_OK;
 }
-
-typedef struct sensor_data {
-    struct timeval time;
-    uint32_t weight_raw;
-    double weight;
-    double temperature;
-    double pressure;
-    double humidity;
-    uint32_t co2;
-    uint32_t tvoc;
-} sensor_data_t;
 
 #define SENSOR_AVERAGE_COUNT    5       // 10Hz / 5 = 2Hz
 #define SENSOR_RINGBUFFER_SIZE  128     // Number of items. 128/2Hz -> 64s
@@ -352,6 +371,28 @@ static size_t create_sensor_data_line_protocol(char *message_buffer, size_t mess
     return data_count;
 }
 
+static size_t create_measurement_json(char *message_buffer, size_t message_buffer_size, const measurement_t *measurement)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    char time_buffer[32] = {};
+    convert_timeval_to_iso8601(tv, time_buffer, sizeof(time_buffer));
+
+    return snprintf(message_buffer, message_buffer_size,
+        "{"
+        "\"timeStamp\":\"%s\","
+        "\"setupTime\":%0.3f,"
+        "\"pooTime\":%0.3f,"
+        "\"cleanupTime\":%0.3f,"
+        "\"catWeight\":%0.3f,"
+        "\"pooWeight\":%0.3f"
+        "}",
+        time_buffer,
+        measurement->setup_time, measurement->poo_time, measurement->cleanup_time,
+        measurement->cat_weight, measurement->poo_weight);
+}
+
 static void sensors_post_task()
 {
     ESP_LOGI(TAG, "sensors_post_task");
@@ -372,6 +413,21 @@ static void sensors_post_task()
             if (ret != ESP_OK)
             {
                 ESP_LOGE(TAG, "failed to post sensor data");
+            }
+        }
+
+        measurement_t m = {};
+        size_t bytes_read = xMessageBufferReceive(measurement_message_buffer, &m, sizeof(measurement_t), 0);
+        if (bytes_read)
+        {
+            if (bytes_read == sizeof(measurement_t))
+            {
+                create_measurement_json(message_buffer, message_buffer_size, &m);
+                http_post_json_data(message_buffer);
+            }
+            else
+            {
+                ESP_LOGE(TAG, "Incomplete read from measurement buffer (got %u/%u)", bytes_read, sizeof(measurement_t));
             }
         }
     }
@@ -467,14 +523,26 @@ static double process_raw_weight(uint32_t weight_raw) // called at 2 Hz
 
     const int32_t weight_raw_zeroed = (int32_t)weight_raw - (int32_t)raw_weight_zero_offset;
 
+
+    // 8.612.000
+    // 8.825.500
+    // 9.8kg
+
     // convert raw value to grams
-    const uint32_t v_zero  = 8339000;
-    const uint32_t v_calib = 8365000;
+    const uint32_t v_zero  = 8612000;
+    const uint32_t v_calib = 8825500;
     const uint32_t m_zero  = 0;
-    const uint32_t m_calib = 1100; // g
+    const uint32_t m_calib = 9800; // g
     const uint32_t dv = v_calib - v_zero;
     const uint32_t dm = m_calib - m_zero;
     const double v_per_m = (double)dv / (double)dm; // change in value per gram
+    // const uint32_t v_zero  = 8339000;
+    // const uint32_t v_calib = 8365000;
+    // const uint32_t m_zero  = 0;
+    // const uint32_t m_calib = 1100; // g
+    // const uint32_t dv = v_calib - v_zero;
+    // const uint32_t dm = m_calib - m_zero;
+    // const double v_per_m = (double)dv / (double)dm; // change in value per gram
 
     const double weight = (double)weight_raw_zeroed / v_per_m;
 
@@ -493,15 +561,10 @@ static size_t weight_history_index = 0;
 static int measure_state = 0;
 static int time_in_current_state = 0;
 
-typedef struct {
-    double setup_time;
-    double poo_time;
-    double cleanup_time;
-    double cat_weight;
-    double poo_weight;
-} measurement_t;
+
 
 static measurement_t current_measurement = {};
+
 
 
 
@@ -511,7 +574,11 @@ static void push_measurement()
         current_measurement.setup_time, current_measurement.poo_time, current_measurement.cleanup_time,
         current_measurement.cat_weight, current_measurement.poo_weight);
 
-    // ...
+    size_t bytes_written = xMessageBufferSend(measurement_message_buffer, &current_measurement, sizeof(measurement_t), 0);
+
+    if (bytes_written != sizeof(measurement_t)) {
+        ESP_LOGE(TAG, "Failed to add measurement to buffer");
+    }
 }
 
 static void enter_state(int new_state)
@@ -530,8 +597,8 @@ static void process_corrected_weight(double weight) // called at 2 Hz
     double spread=0, avg=0;
     calculate_spread_avg_double(weight_history_values, WEIGHT_HISTORY_SAMPLES, &spread, &avg);
 
-    const bool is_stable = spread < 50.0;
-    const bool is_zero = avg < 50.0;
+    const bool is_stable = spread < 25.0; // TODO dynamic based on recent noise levels?
+    const bool is_zero = avg < 10.0;
     const bool is_plausible_cat = 1000.0 < avg && avg < 10000.0;
 
     ESP_LOGI(TAG, "state=%d, weight=%0.1f, is_stable=%s, spread %0.1f, avg %0.1f", measure_state, weight, is_stable ? "yes" : "no", spread, avg);

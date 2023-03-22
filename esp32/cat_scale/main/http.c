@@ -158,3 +158,37 @@ esp_err_t http_post_sensor_data_influx(const char *sensor_data)
 
     return ESP_OK;
 }
+
+esp_err_t http_post_json_data(const char *json)
+{
+    assert(json);
+
+    esp_http_client_config_t config = {
+        //.url = "http://Framework:5155/Measurement",
+        .url = "http://Media:5155/Measurement",
+        .method = HTTP_METHOD_POST,
+        .event_handler = http_client_event_handler,
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    if (!client)
+    {
+        ESP_LOGE(TAG, "esp_http_client_init failed");
+        return ESP_FAIL;
+    }
+
+    esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_http_client_set_post_field(client, json, strlen(json));
+
+    esp_err_t err = esp_http_client_perform(client);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "HTTP POST Status = %d", esp_http_client_get_status_code(client));
+
+    } else {
+        ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
+    }
+
+    esp_http_client_cleanup(client);
+
+    return ESP_OK;
+}

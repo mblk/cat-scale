@@ -1,0 +1,75 @@
+menu "Cat Scale Configuration"
+
+    config CATSCALE_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) for the example to connect to.
+
+    config CATSCALE_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password (WPA or WPA2) for the example to use.
+
+    config CATSCALE_WIFI_MAXIMUM_RETRY
+        int "Maximum retry"
+        default 5
+        help
+            Set the Maximum retry to avoid station reconnecting to the AP unlimited when the AP is really inexistent.
+
+    choice CATSCALE_WIFI_SCAN_AUTH_MODE_THRESHOLD
+        prompt "WiFi Scan auth mode threshold"
+        default ESP_WIFI_AUTH_WPA2_PSK
+        help
+            The weakest authmode to accept in the scan mode.
+            This value defaults to ESP_WIFI_AUTH_WPA2_PSK incase password is present and ESP_WIFI_AUTH_OPEN is used.
+            Please select ESP_WIFI_AUTH_WEP/ESP_WIFI_AUTH_WPA_PSK incase AP is operating in WEP/WPA mode.
+
+        config ESP_WIFI_AUTH_OPEN
+            bool "OPEN"
+        config ESP_WIFI_AUTH_WEP
+            bool "WEP"
+        config ESP_WIFI_AUTH_WPA_PSK
+            bool "WPA PSK"
+        config ESP_WIFI_AUTH_WPA2_PSK
+            bool "WPA2 PSK"
+        config ESP_WIFI_AUTH_WPA_WPA2_PSK
+            bool "WPA/WPA2 PSK"
+        config ESP_WIFI_AUTH_WPA3_PSK
+            bool "WPA3 PSK"
+        config ESP_WIFI_AUTH_WPA2_WPA3_PSK
+            bool "WPA2/WPA3 PSK"
+        config ESP_WIFI_AUTH_WAPI_PSK
+            bool "WAPI PSK"
+    endchoice
+
+    config CATSCALE_LOG_UDP_HOST
+        string "Target hostname for UDP logging"
+        default "mylogginghost"
+
+    config CATSCALE_LOG_UDP_PORT
+        int "Target port for UDP logging"
+        default 55555
+
+    config CATSCALE_OTA_PORT
+        int "Local port for over-the-air updates"
+        default 69
+
+    config CATSCALE_INFLUX_ENDPOINT
+        string "influx db endpoint address"
+        default "myinfluxdb"
+
+    config CATSCALE_INFLUX_ORGANIZATION
+        string "influx db organization"
+        default "myorg"
+
+    config CATSCALE_INFLUX_BUCKET
+        string "influx db bucket"
+        default "mybucket"
+
+    config CATSCALE_INFLUX_TOKEN
+        string "influx db access token"
+        default "mytoken"
+
+endmenu

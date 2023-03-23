@@ -20,9 +20,6 @@
 
 static const char *TAG = "app-http";
 
-// #define MAX_HTTP_RECV_BUFFER 512
-// #define MAX_HTTP_OUTPUT_BUFFER 2048
-
 static esp_err_t http_client_event_handler(esp_http_client_event_t *evt)
 {
     switch(evt->event_id) 
@@ -53,7 +50,7 @@ static esp_err_t http_client_event_handler(esp_http_client_event_t *evt)
                 memcpy(temp, evt->data, evt->data_len);
                 temp[evt->data_len] = 0;
 
-                ESP_LOGD(TAG, "data: %s", temp);
+                ESP_LOGI(TAG, "http data: %s", temp);
 
                 free(temp);
             }
@@ -128,7 +125,7 @@ esp_err_t http_post_sensor_data_influx(const char *sensor_data)
     char auth[256] = {};
     snprintf(auth, sizeof(auth), "Token %s", token);
 
-    esp_http_client_config_t config = {
+    const esp_http_client_config_t config = {
         .url = url,
         .method = HTTP_METHOD_POST,
         .event_handler = http_client_event_handler,
@@ -159,13 +156,17 @@ esp_err_t http_post_sensor_data_influx(const char *sensor_data)
     return ESP_OK;
 }
 
-esp_err_t http_post_json_data(const char *json)
+esp_err_t http_post_json_data(const char *path, const char *json)
 {
+    assert(path);
     assert(json);
 
-    esp_http_client_config_t config = {
-        //.url = "http://Framework:5155/Measurement",
-        .url = "http://Media:5155/Measurement",
+    char url[256] = {};
+    snprintf(url, sizeof(url), "http://Media:5155/%s", path); // TODO get from config
+    //snprintf(url, sizeof(url), "http://Framework:5155/%s", path); // TODO get from config
+
+    const esp_http_client_config_t config = {
+        .url = url,
         .method = HTTP_METHOD_POST,
         .event_handler = http_client_event_handler,
     };

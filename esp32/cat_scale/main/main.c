@@ -6,6 +6,7 @@
 #include "time.h"
 #include "rc.h"
 #include "log_udp.h"
+#include "measurement.h"
 
 #include "sdkconfig.h"
 
@@ -37,16 +38,12 @@ void app_main()
     dump_config();
     
     ESP_ERROR_CHECK(log_udp_init());
-
     ESP_ERROR_CHECK(flash_init());
-
     ESP_ERROR_CHECK(wifi_init_sta());
     g_network_ready = true;
-
     ESP_ERROR_CHECK(time_init_and_sync());
-
     ESP_ERROR_CHECK(sensors_init());
-
+    ESP_ERROR_CHECK(measurement_init());
     ESP_ERROR_CHECK(rc_init());
 
     while(true)

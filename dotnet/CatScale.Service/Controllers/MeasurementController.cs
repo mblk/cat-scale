@@ -44,7 +44,7 @@ public class MeasurementController : ControllerBase
             .Field("cleanup_time", measurement.CleanupTime)
             .Field("cat_weight", measurement.CatWeight)
             .Field("poo_weight", measurement.PooWeight)
-            .Timestamp(DateTime.UtcNow, WritePrecision.Ns);
+            .Timestamp(measurement.TimeStamp, WritePrecision.Ns);
 
         using var client = new InfluxDBClient("http://Media:8086", _influxToken);
         using var write = client.GetWriteApi();

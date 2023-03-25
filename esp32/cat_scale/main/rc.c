@@ -1,6 +1,7 @@
 #undef __linux__ // BUG: https://github.com/microsoft/vscode-cpptools/issues/9680
 
 #include "rc.h"
+#include "measurement.h"
 
 #include "sdkconfig.h"
 
@@ -147,7 +148,9 @@ esp_err_t rc_init()
     return ESP_OK;
 }
 
-#define RC_COMMAND_REBOOT       0x01
+#define RC_COMMAND_REBOOT               0x01
+#define RC_COMMAND_TEST_MEASUREMENT     0x02
+#define RC_COMMAND_TEST_CLEANING        0x04
 
 typedef struct {
     size_t total_bytes_received;
@@ -215,20 +218,31 @@ static void process_data(process_state_t *state, void *data, size_t length)
             ESP_LOGI(TAG, "did not receive application image (%X,%X)", image_header->magic, app_desc->magic_word);
             ESP_LOG_BUFFER_HEX(TAG, data, length);
 
-            // TODO process commands?
-            // - reboot
-            // - ?
-
-            if (strncmp(data, "reboot", 6) == 0 ||
-                strncmp(data, "REBOOT", 6) == 0)
+            if (strncmp(data, "reboot", 6) == 0)
             {
                 ESP_LOGI(TAG, "Reboot command received");
                 state->commands_received |= RC_COMMAND_REBOOT;
+            }
+            else if (strncmp(data, "measure", 7) == 0)
+            {
+                ESP_LOGI(TAG, "Test measurement command received");
+                state->commands_received |= RC_COMMAND_TEST_MEASUREMENT;
+            }
+            else if (strncmp(data, "clean", 5) == 0)
+            {
+                ESP_LOGI(TAG, "Test cleaning command received");
+                state->commands_received |= RC_COMMAND_TEST_CLEANING;
             }
             else
             {
                 ESP_LOGI(TAG, "Unknown command");
             }
+
+            // TODO
+            // set runtime config ?
+            // eg:
+            // "set http_addr Framework:5155"
+
         }
     }
 
@@ -289,6 +303,16 @@ static void process_end(process_state_t *state)
             vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
         esp_restart();
+    }
+
+    if (state->commands_received & RC_COMMAND_TEST_MEASUREMENT)
+    {
+        measurement_test_measurement();
+    }
+
+    if (state->commands_received & RC_COMMAND_TEST_CLEANING)
+    {
+        measurement_test_cleaning();
     }
 }
 

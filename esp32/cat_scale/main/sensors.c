@@ -268,9 +268,6 @@ static size_t create_sensor_data_line_protocol(char *message_buffer, size_t mess
     
     memset(message_buffer, 0, message_buffer_size);
 
-    if (message_buffer_size < 10)
-        return 0;
-
     size_t message_buffer_offset = 0;
     size_t data_count = 0;
 

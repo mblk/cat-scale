@@ -47,12 +47,12 @@ typedef struct
 
 enum measurement_state
 {
-    STATE_WAIT_FOR_IDLE = 0,
-    STATE_IDLE = 1,
-    STATE_SETUP = 2,
-    STATE_POO = 3,
-    STATE_CLEANUP = 4,
-    STATE_MAINTENANCE = 5,
+    state_wait_for_idle = 0,
+    state_idle = 1,
+    state_setup = 2,
+    state_poo = 3,
+    state_cleanup = 4,
+    state_maintenance = 5,
 };
 
 #define ZERO_DETECTION_TICKS        (2 * 30)        // 30s
@@ -62,18 +62,18 @@ enum measurement_state
 
 static MessageBufferHandle_t event_message_buffer = NULL;
 
+// zeroing
 static uint32_t raw_weight_prev_values[ZERO_DETECTION_TICKS] = {};
 static size_t raw_weight_prev_value_index = 0;
 static uint32_t raw_weight_zero_offset = 0;
 static bool weight_zeroing_enabled = true;
 
+// measurement state machine
 static double weight_history_values[WEIGHT_HISTORY_SAMPLES] = {};
 static size_t weight_history_index = 0;
-
 static int measure_state = 0;
 static int ticks_in_current_state = 0;
 static int plausible_maintenance_ticks = 0;
-
 static event_t current_event = {};
 
 static void measurement_post_task();
@@ -101,6 +101,7 @@ static size_t create_measurement_json(char *message_buffer, size_t message_buffe
 
     return snprintf(message_buffer, message_buffer_size,
         "{"
+        "\"toiletId\":1," // TODO from config?
         "\"timeStamp\":\"%s\","
         "\"setupTime\":%0.3f,"
         "\"pooTime\":%0.3f,"
@@ -126,6 +127,7 @@ static size_t create_cleaning_json(char *message_buffer, size_t message_buffer_s
 
     return snprintf(message_buffer, message_buffer_size,
         "{"
+        "\"toiletId\":1," // TODO from config?
         "\"timeStamp\":\"%s\","
         "\"cleaningTime\":%0.3f,"
         "\"cleaningWeight\":%0.3f"
@@ -147,27 +149,24 @@ static void measurement_post_task()
     {
         event_t e = {};
         size_t bytes_read = xMessageBufferReceive(event_message_buffer, &e, sizeof(event_t), portMAX_DELAY); // blocking read
-        if (bytes_read)
+        if (bytes_read == sizeof(event_t))
         {
-            if (bytes_read == sizeof(event_t))
+            switch (e.event_type)
             {
-                switch (e.event_type)
-                {
-                    case event_type_measurement:
-                        create_measurement_json(message_buffer, message_buffer_size, &e);
-                        http_post_json_data("Measurement", message_buffer);
-                        break;
+                case event_type_measurement:
+                    create_measurement_json(message_buffer, message_buffer_size, &e);
+                    http_post_json_data("Measurement", message_buffer);
+                    break;
 
-                    case event_type_cleaning:
-                        create_cleaning_json(message_buffer, message_buffer_size, &e);
-                        http_post_json_data("Cleaning", message_buffer);
-                        break;
-                }
+                case event_type_cleaning:
+                    create_cleaning_json(message_buffer, message_buffer_size, &e);
+                    http_post_json_data("Cleaning", message_buffer);
+                    break;
             }
-            else
-            {
-                ESP_LOGE(TAG, "Incomplete read from measurement buffer (got %u/%u)", bytes_read, sizeof(event_t));
-            }
+        }
+        else
+        {
+            ESP_LOGE(TAG, "Incomplete read from measurement buffer (got %u/%u)", bytes_read, sizeof(event_t));
         }
     }
 }
@@ -231,7 +230,7 @@ double measurement_process_raw_weight(uint32_t weight_raw) // called at 2 Hz
     calculate_spread_avg_uint32(raw_weight_prev_values, ZERO_DETECTION_TICKS, &spread, &avg);
     ESP_LOGD(TAG, "raw spread over %u samples was %u", ZERO_DETECTION_TICKS, spread);
 
-    if (spread < ZERO_DETECTION_THRESHOLD && weight_zeroing_enabled)
+    if (spread < ZERO_DETECTION_THRESHOLD && weight_zeroing_enabled) // TODO dynamic threshold?
     {
         raw_weight_zero_offset = avg;
         // ESP_LOGI(TAG, "new zero offset %u", raw_weight_zero_offset);
@@ -240,9 +239,9 @@ double measurement_process_raw_weight(uint32_t weight_raw) // called at 2 Hz
     const int32_t weight_raw_zeroed = (int32_t)weight_raw - (int32_t)raw_weight_zero_offset;
 
     // convert raw value to grams
-    const uint32_t v_zero = 8612000;
+    const uint32_t v_zero  = 8612000;
     const uint32_t v_calib = 8825500;
-    const uint32_t m_zero = 0;
+    const uint32_t m_zero  = 0;
     const uint32_t m_calib = 9800; // g
     const uint32_t dv = v_calib - v_zero;
     const uint32_t dm = m_calib - m_zero;
@@ -299,20 +298,12 @@ int measurement_process_corrected_weight(double weight) // called at 2 Hz
     double spread = 0, avg = 0;
     calculate_spread_avg_double(weight_history_values, WEIGHT_HISTORY_SAMPLES, &spread, &avg);
 
-    const bool is_stable = spread < 25.0; // TODO dynamic based on recent noise levels?
-    const bool is_zero = avg < 10.0;
-    const bool is_plausible_cat = 1000.0 < avg && avg < 10000.0;
+    const bool is_stable                = spread < 25.0; // TODO dynamic based on recent noise levels?
+    const bool is_zero                  = avg < 10.0;
+    const bool is_plausible_cat         = 1000.0 < avg && avg < 10000.0;
     const bool is_plausible_maintenance = avg < -500.0;
 
     ESP_LOGD(TAG, "state=%d, weight=%0.1f, is_stable=%s, spread %0.1f, avg %0.1f", measure_state, weight, is_stable ? "yes" : "no", spread, avg);
-
-    // timeout?
-    ticks_in_current_state++;
-    if (measure_state > 1 && ticks_in_current_state > 60 * 2)
-    {
-        ESP_LOGE(TAG, "Timeout in state %d", measure_state);
-        enter_state(STATE_WAIT_FOR_IDLE);
-    }
 
     // enter maintenance?
     if (is_plausible_maintenance)
@@ -321,7 +312,7 @@ int measurement_process_corrected_weight(double weight) // called at 2 Hz
         if (plausible_maintenance_ticks > 5)
         {
             memset(&current_event, 0, sizeof(event_t));
-            enter_state(STATE_MAINTENANCE);
+            enter_state(state_maintenance);
         }
     }
     else
@@ -332,26 +323,26 @@ int measurement_process_corrected_weight(double weight) // called at 2 Hz
     // update state machine
     switch (measure_state)
     {
-        case STATE_WAIT_FOR_IDLE: // wait for zero
+        case state_wait_for_idle: // wait for zero
         {
             if (is_stable && is_zero)
             {
-                enter_state(STATE_IDLE);
+                enter_state(state_idle);
             }
             break;
         }
 
-        case STATE_IDLE: // wait for significant weight
+        case state_idle: // wait for significant weight
         {
             if (is_plausible_cat)
             {
                 memset(&current_event, 0, sizeof(event_t));
-                enter_state(STATE_SETUP);
+                enter_state(state_setup);
             }
             break;
         }
 
-        case STATE_SETUP: // wait for stable signal
+        case state_setup: // wait for stable signal
         {
             current_event.m.setup_time += WEIGHT_SAMPLE_DT;
 
@@ -360,23 +351,23 @@ int measurement_process_corrected_weight(double weight) // called at 2 Hz
                 current_event.m.setup_time -= WEIGHT_HISTORY_SAMPLES * WEIGHT_SAMPLE_DT;
                 current_event.m.poo_time += WEIGHT_HISTORY_SAMPLES * WEIGHT_SAMPLE_DT;
                 current_event.m.cat_weight = avg;
-                enter_state(STATE_POO);
+                enter_state(state_poo);
             }
             break;
         }
 
-        case STATE_POO: // wait for end of stable signal
+        case state_poo: // wait for end of stable signal
         {
             current_event.m.poo_time += WEIGHT_SAMPLE_DT;
 
             if (!is_stable)
             {
-                enter_state(STATE_CLEANUP);
+                enter_state(state_cleanup);
             }
             break;
         }
 
-        case STATE_CLEANUP: // wait for cat to leave
+        case state_cleanup: // wait for cat to leave
         {
             current_event.m.cleanup_time += WEIGHT_SAMPLE_DT;
 
@@ -384,12 +375,12 @@ int measurement_process_corrected_weight(double weight) // called at 2 Hz
             {
                 current_event.m.poo_weight = avg;
                 push_measurement();
-                enter_state(STATE_WAIT_FOR_IDLE);
+                enter_state(state_wait_for_idle);
             }
             break;
         }
 
-        case STATE_MAINTENANCE: // maintenance (ie. cleaning or refilling)
+        case state_maintenance: // maintenance (ie. cleaning or refilling)
         {
             current_event.c.cleaning_time += WEIGHT_SAMPLE_DT;
 
@@ -397,7 +388,7 @@ int measurement_process_corrected_weight(double weight) // called at 2 Hz
             {
                 current_event.c.cleaning_weight = avg;
                 push_cleaning();
-                enter_state(STATE_WAIT_FOR_IDLE);
+                enter_state(state_wait_for_idle);
             }
             break;
         }
@@ -405,12 +396,49 @@ int measurement_process_corrected_weight(double weight) // called at 2 Hz
         default:
         {
             ESP_LOGE(TAG, "invalid state %d", measure_state);
-            enter_state(STATE_WAIT_FOR_IDLE);
+            enter_state(state_wait_for_idle);
             break;
         }
     }
 
-    weight_zeroing_enabled = (measure_state == STATE_WAIT_FOR_IDLE || measure_state == STATE_IDLE);
+    // timeout?
+    ticks_in_current_state++;
+    if (measure_state > state_idle && ticks_in_current_state > 60*2 * 5) // 5min
+    {
+        ESP_LOGE(TAG, "Timeout in state %d", measure_state);
+        enter_state(state_wait_for_idle);
+    }
+
+    weight_zeroing_enabled = (measure_state == state_wait_for_idle || measure_state == state_idle);
 
     return measure_state;
+}
+
+void measurement_test_measurement()
+{
+    const event_t e = {
+        .event_type = event_type_measurement,
+        .m.setup_time = 1,
+        .m.poo_time = 2,
+        .m.cleanup_time = 3,
+        .m.cat_weight = 3000,
+        .m.poo_weight = 100
+    };
+
+    size_t bytes_written = xMessageBufferSend(event_message_buffer, &e, sizeof(event_t), 0);
+    if (bytes_written != sizeof(event_t))
+        ESP_LOGE(TAG, "Failed to add measurement to buffer");
+}
+
+void measurement_test_cleaning()
+{
+    const event_t e = {
+        .event_type = event_type_cleaning,
+        .c.cleaning_time = 10,
+        .c.cleaning_weight = -100
+    };
+
+    size_t bytes_written = xMessageBufferSend(event_message_buffer, &e, sizeof(event_t), 0);
+    if (bytes_written != sizeof(event_t))
+        ESP_LOGE(TAG, "Failed to add cleaning to buffer");
 }

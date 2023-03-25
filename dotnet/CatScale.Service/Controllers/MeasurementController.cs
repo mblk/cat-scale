@@ -1,8 +1,7 @@
-using CatScale.Service.Model;
-using InfluxDB.Client;
-using InfluxDB.Client.Api.Domain;
-using InfluxDB.Client.Writes;
+using CatScale.Service.DbModel;
+using CatScale.Service.RestModel;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.Controllers;
 
@@ -11,45 +10,57 @@ namespace CatScale.Service.Controllers;
 public class MeasurementController : ControllerBase
 {
     private readonly ILogger<MeasurementController> _logger;
-    private readonly string? _influxToken;
-    private readonly string? _influxOrg;
-    private readonly string? _influxBucket;
+    private readonly CatScaleContext _dbContext;
 
-    public MeasurementController(ILogger<MeasurementController> logger, IConfiguration configuration)
+    public MeasurementController(ILogger<MeasurementController> logger, CatScaleContext dbContext)
     {
         _logger = logger;
-
-        _influxToken = configuration.GetValue<string>("InfluxDB:Token");
-        _influxOrg = configuration.GetValue<string>("InfluxDB:Org");
-        _influxBucket = configuration.GetValue<string>("InfluxDB:Bucket");
+        _dbContext = dbContext;
     }
 
     [HttpPost]
-    public IActionResult Post([FromBody] Measurement measurement)
+    public async Task<IActionResult> Post([FromBody] NewMeasurement newMeasurement)
     {
-        _logger.LogInformation("New measurement 1 {measurement}", measurement);
+        _logger.LogInformation("New measurement {measurement}", newMeasurement);
 
-        const double mFilou = 7300d;
-        const double mFelix = 6000d;
+        var catsWithCurrentWeight = _dbContext.Cats
+            .Include(c => c.Weights)
+            .Where(c => c.Weights.Any())
+            .Select(c => new
+            {
+                Cat = c,
+                CurrentWeight = c.Weights.OrderByDescending(w => w.Timestamp).First()
+            });
+
+        var catsWithWeightDiff = catsWithCurrentWeight.Select(c => new
+        {
+            Cat = c.Cat,
+            WeightDiff = Math.Abs(newMeasurement.CatWeight - c.CurrentWeight.Weight)
+        });
+
+        var classifiedCat = catsWithWeightDiff.OrderBy(c => c.WeightDiff).First().Cat;
+
+        _logger.LogInformation($"Classified cat '{classifiedCat.Name}' from weight {newMeasurement.CatWeight}");
         
-        var dmFilou = Math.Abs(measurement.CatWeight - mFilou);
-        var dmFelix = Math.Abs(measurement.CatWeight - mFelix);
+        var toilet = _dbContext.Toilets.SingleOrDefault(t => t.Id == newMeasurement.ToiletId);
+        if (toilet is null)
+            return NotFound($"Toilet does not exist");
 
-        var cat = dmFilou < dmFelix ? "filou" : "felix";
+        var measurement = new Measurement()
+        {
+            Cat = classifiedCat,
+            Timestamp = newMeasurement.Timestamp.ToUniversalTime(),
+            Toilet = toilet,
+            SetupTime = newMeasurement.SetupTime,
+            PooTime = newMeasurement.PooTime,
+            CleanupTime = newMeasurement.CleanupTime,
+            CatWeight = newMeasurement.CatWeight,
+            PooWeight = newMeasurement.PooWeight
+        };
 
-        var point = PointData.Measurement("poo")
-            .Tag("cat", cat)
-            .Field("setup_time", measurement.SetupTime)
-            .Field("poo_time", measurement.PooTime)
-            .Field("cleanup_time", measurement.CleanupTime)
-            .Field("cat_weight", measurement.CatWeight)
-            .Field("poo_weight", measurement.PooWeight)
-            .Timestamp(measurement.TimeStamp, WritePrecision.Ns);
-
-        using var client = new InfluxDBClient("http://Media:8086", _influxToken);
-        using var write = client.GetWriteApi();
-        write.WritePoint(point, _influxBucket, _influxOrg);
+        await _dbContext.Measurements.AddAsync(measurement);
+        await _dbContext.SaveChangesAsync();
         
-        return Ok();
+        return CreatedAtAction(nameof(Post), new { Id = measurement.Id }, measurement);
     }
 }

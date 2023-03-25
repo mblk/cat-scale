@@ -71,53 +71,16 @@ static esp_err_t http_client_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-#if 0
-esp_err_t http_post_sensor_data(const char *sensor_data)
-{
-    assert(sensor_data);
-
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
-
-    esp_http_client_config_t config = {
-        .url = "http://Framework:8888/Sensor",
-        .method = HTTP_METHOD_POST,
-        .event_handler = http_client_event_handler,
-    };
-
-    esp_http_client_handle_t client = esp_http_client_init(&config);
-    if (!client)
-    {
-        ESP_LOGE(TAG, "esp_http_client_init failed");
-        return ESP_FAIL;
-    }
-
-    esp_http_client_set_header(client, "Content-Type", "application/json");
-    esp_http_client_set_post_field(client, sensor_data, strlen(sensor_data));
-
-    esp_err_t err = esp_http_client_perform(client);
-    if (err == ESP_OK) {
-        ESP_LOGI(TAG, "HTTP POST Status = %d", esp_http_client_get_status_code(client));
-
-    } else {
-        ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
-    }
-
-    esp_http_client_cleanup(client);
-
-    return ESP_OK;
-}
-#endif
-
 esp_err_t http_post_sensor_data_influx(const char *sensor_data)
 {
     assert(sensor_data);
 
     //esp_log_level_set(TAG, ESP_LOG_DEBUG);
 
-    const char *addr = CONFIG_CATSCALE_INFLUX_ENDPOINT;
-    const char *org = CONFIG_CATSCALE_INFLUX_ORGANIZATION;
+    const char *addr   = CONFIG_CATSCALE_INFLUX_ENDPOINT;
+    const char *org    = CONFIG_CATSCALE_INFLUX_ORGANIZATION;
     const char *bucket = CONFIG_CATSCALE_INFLUX_BUCKET;
-    const char *token = CONFIG_CATSCALE_INFLUX_TOKEN;
+    const char *token  = CONFIG_CATSCALE_INFLUX_TOKEN;
 
     char url[256] = {};
     snprintf(url, sizeof(url), "http://%s/api/v2/write?org=%s&bucket=%s&precision=ns", addr, org, bucket);
@@ -162,8 +125,8 @@ esp_err_t http_post_json_data(const char *path, const char *json)
     assert(json);
 
     char url[256] = {};
-    snprintf(url, sizeof(url), "http://Media:5155/%s", path); // TODO get from config
-    //snprintf(url, sizeof(url), "http://Framework:5155/%s", path); // TODO get from config
+    //snprintf(url, sizeof(url), "http://Media:5155/%s", path); // TODO get from config
+    snprintf(url, sizeof(url), "http://Framework:5155/%s", path); // TODO get from config
 
     const esp_http_client_config_t config = {
         .url = url,
@@ -172,8 +135,7 @@ esp_err_t http_post_json_data(const char *path, const char *json)
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
-    if (!client)
-    {
+    if (!client) {
         ESP_LOGE(TAG, "esp_http_client_init failed");
         return ESP_FAIL;
     }
@@ -181,15 +143,19 @@ esp_err_t http_post_json_data(const char *path, const char *json)
     esp_http_client_set_header(client, "Content-Type", "application/json");
     esp_http_client_set_post_field(client, json, strlen(json));
 
+    esp_err_t ret = ESP_OK;
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "HTTP POST Status = %d", esp_http_client_get_status_code(client));
-
+        int httpStatus = esp_http_client_get_status_code(client);
+        ESP_LOGI(TAG, "HTTP POST Status = %d", httpStatus);
+        if (httpStatus / 100 != 2)
+            ret = ESP_FAIL;
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
+        ret = ESP_FAIL;
     }
 
     esp_http_client_cleanup(client);
 
-    return ESP_OK;
+    return ret;
 }

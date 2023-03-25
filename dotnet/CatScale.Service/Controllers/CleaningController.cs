@@ -1,7 +1,5 @@
-using CatScale.Service.Model;
-using InfluxDB.Client;
-using InfluxDB.Client.Api.Domain;
-using InfluxDB.Client.Writes;
+using CatScale.Service.DbModel;
+using CatScale.Service.RestModel;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CatScale.Service.Controllers;
@@ -10,34 +8,43 @@ namespace CatScale.Service.Controllers;
 [Route("[controller]")]
 public class CleaningController : ControllerBase
 {
-    private readonly ILogger<MeasurementController> _logger;
-    private readonly string? _influxToken;
-    private readonly string? _influxOrg;
-    private readonly string? _influxBucket;
+    private readonly ILogger<CleaningController> _logger;
+    private readonly CatScaleContext _dbContext;
 
-    public CleaningController(ILogger<MeasurementController> logger, IConfiguration configuration)
+    public CleaningController(ILogger<CleaningController> logger, CatScaleContext dbContext)
     {
         _logger = logger;
-        
-        _influxToken = configuration.GetValue<string>("InfluxDB:Token");
-        _influxOrg = configuration.GetValue<string>("InfluxDB:Org");
-        _influxBucket = configuration.GetValue<string>("InfluxDB:Bucket");
+        _dbContext = dbContext;
+    }
+
+    [HttpGet]
+    public ActionResult<IEnumerable<Cleaning>> Get()
+    {
+        var cleanings = _dbContext.Cleanings;
+
+        return Ok(cleanings);
     }
     
     [HttpPost]
-    public IActionResult Post([FromBody] Cleaning cleaning)
+    public async Task<IActionResult> Post([FromBody] NewCleaning newCleaning)
     {
-        _logger.LogInformation("New cleaning 1 {cleaning}", cleaning);
+        _logger.LogInformation("New cleaning {cleaning}", newCleaning);
 
-         var point = PointData.Measurement("cleaning")
-             .Field("cleaning_time", cleaning.CleaningTime)
-             .Field("cleaning_weight", cleaning.CleaningWeight)
-             .Timestamp(cleaning.TimeStamp, WritePrecision.Ns);
-
-         using var client = new InfluxDBClient("http://Media:8086", _influxToken);
-         using var write = client.GetWriteApi();
-         write.WritePoint(point, _influxBucket, _influxOrg);
+        var toilet = _dbContext.Toilets.SingleOrDefault(t => t.Id == newCleaning.ToiletId);
+        if (toilet is null)
+            return NotFound($"Toilet does not exist");
         
-        return Ok();
+        var cleaning = new Cleaning()
+        {
+            Timestamp = newCleaning.Timestamp.ToUniversalTime(),
+            Time = newCleaning.CleaningTime,
+            Weight = newCleaning.CleaningWeight,
+            Toilet = toilet,
+        };
+        
+        await _dbContext.Cleanings.AddAsync(cleaning);
+        await _dbContext.SaveChangesAsync();
+
+        return CreatedAtAction(nameof(Post), new { Id = cleaning.Id }, cleaning);
     }
 }

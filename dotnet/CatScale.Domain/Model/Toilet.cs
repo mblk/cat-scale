@@ -1,4 +1,4 @@
-namespace CatScale.Service.DbModel;
+namespace CatScale.Domain.Model;
 
 public class Toilet
 {

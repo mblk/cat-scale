@@ -1,15 +1,10 @@
+using CatScale.Domain.Enums;
+using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.Controllers;
-
-public enum ToiletDetails
-{
-    None,
-    All,
-    SinceLastCleaning,
-}
 
 [ApiController]
 [Route("[controller]")]

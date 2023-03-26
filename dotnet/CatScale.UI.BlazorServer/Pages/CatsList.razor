@@ -1,0 +1,55 @@
+@page "/cats"
+@using CatScale.Domain.Model
+@using CatScale.UI.BlazorServer.Data
+@using System.Diagnostics
+@inject ICatScaleService CatScaleService
+
+<h3>Cats</h3>
+
+@if (_cats == null)
+{
+    <p>Loading ...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>DoB</th>
+            <th>Age</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var cat in _cats)
+        {
+            <tr>
+                <td>@cat.Id</td>
+                <td>@cat.Name</td>
+                <td>@cat.DateOfBirth</td>
+                <td>@CalculateAge(cat)</td>
+                <td><a href="cat/@cat.Id">Show data</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private Cat[]? _cats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cats = await CatScaleService.GetCatsList();
+    }
+
+    private static int CalculateAge(Cat cat)
+    {
+        var dob = cat.DateOfBirth.ToDateTime(TimeOnly.MinValue);
+        var age = DateTime.Now - dob;
+        var years = age.TotalDays / 365;
+        return (int)years;
+    }
+}

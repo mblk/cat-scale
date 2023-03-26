@@ -1,3 +1,4 @@
+using CatScale.Domain.Model;
 using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.DbModel;

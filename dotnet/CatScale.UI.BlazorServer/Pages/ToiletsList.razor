@@ -1,0 +1,46 @@
+@page "/toilets"
+@using CatScale.Domain.Model
+@using CatScale.UI.BlazorServer.Data
+@using System.Diagnostics
+@inject ICatScaleService CatScaleService
+
+<h3>Toilets</h3>
+
+@if (_toilets == null)
+{
+    <p>Loading ...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var toilet in _toilets)
+        {
+            <tr>
+                <td>@toilet.Id</td>
+                <td>@toilet.Name</td>
+                <td>@toilet.Description</td>
+                <td><a href="toilet/@toilet.Id">Show data</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private Toilet[]? _toilets;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Debug.WriteLine("ToiletsList OnInitializedAsync");
+        _toilets = await CatScaleService.GetToiletsList();
+    }
+}

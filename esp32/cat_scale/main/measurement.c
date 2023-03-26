@@ -298,7 +298,7 @@ int measurement_process_corrected_weight(double weight) // called at 2 Hz
     double spread = 0, avg = 0;
     calculate_spread_avg_double(weight_history_values, WEIGHT_HISTORY_SAMPLES, &spread, &avg);
 
-    const bool is_stable                = spread < 25.0; // TODO dynamic based on recent noise levels?
+    const bool is_stable                = spread < 15.0; // TODO dynamic based on recent noise levels?
     const bool is_zero                  = avg < 10.0;
     const bool is_plausible_cat         = 1000.0 < avg && avg < 10000.0;
     const bool is_plausible_maintenance = avg < -500.0;

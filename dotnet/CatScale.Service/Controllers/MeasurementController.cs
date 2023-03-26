@@ -1,3 +1,4 @@
+using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using CatScale.Service.RestModel;
 using Microsoft.AspNetCore.Mvc;

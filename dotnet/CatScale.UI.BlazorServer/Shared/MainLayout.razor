@@ -1,0 +1,21 @@
+﻿@using System.Globalization
+@using CatScale.UI.BlazorServer.Components
+@inherits LayoutComponentBase
+
+<PageTitle>CatScale.UI.BlazorServer</PageTitle>
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <PooCounter />
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>

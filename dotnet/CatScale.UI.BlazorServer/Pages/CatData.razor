@@ -1,0 +1,90 @@
+@page "/cat/{Id:int}"
+@using CatScale.Domain.Model
+@using CatScale.UI.BlazorServer.Data
+@using CatScale.Domain.Enums
+@using CatScale.UI.BlazorServer.Utils
+@inject ICatScaleService CatScaleService
+
+<h3>Cat</h3>
+
+@if (_cat is null)
+{
+    <p>Loading ...</p>
+}
+else
+{
+    <p>Id: @_cat.Id</p>
+    <p>Name: @_cat.Name</p>
+    <p>DoB: @_cat.DateOfBirth</p>
+    <p>Age: @CalculateAge(_cat)</p>
+                               
+    <p>Weights:</p>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Timestamp</th>
+                <th>Weight</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var weight in _cat.Weights.OrderByDescending(w => w.Timestamp))
+            {
+                <tr>
+                    <td>@weight.Id</td>
+                    <td>@TimestampFormatter.Format(weight.Timestamp)</td>
+                    <td>@weight.Weight g</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    
+    <p>Measurements:</p>
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>Timestamp</th>
+            <th>Setup</th>
+            <th>Poo</th>
+            <th>Cleanup</th>
+            <th>Cat</th>
+            <th>Poo</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var measurement in _cat.Measurements.OrderByDescending(m => m.Timestamp))
+        {
+            <tr>
+                <td>@measurement.Id</td>
+                <td>@TimestampFormatter.Format(measurement.Timestamp)</td>
+                <td>@measurement.SetupTime s</td>
+                <td>@measurement.PooTime s</td>
+                <td>@measurement.CleanupTime s</td>
+                <td>@measurement.CatWeight g</td>
+                <td>@measurement.PooWeight g</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    
+    private Cat? _cat;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cat = await CatScaleService.GetCatDetails(Id, CatDetails.All);
+    }
+    
+    private static int CalculateAge(Cat cat)
+    {
+        var dob = cat.DateOfBirth.ToDateTime(TimeOnly.MinValue);
+        var age = DateTime.Now - dob;
+        var years = age.TotalDays / 365;
+        return (int)years;
+    }
+}

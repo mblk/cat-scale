@@ -1,3 +1,5 @@
+using CatScale.Domain.Model;
+
 namespace CatScale.Service.DbModel;
 
 public static class CatScaleDbInitializer

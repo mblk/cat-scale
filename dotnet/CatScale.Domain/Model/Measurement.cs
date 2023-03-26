@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace CatScale.Service.DbModel;
+namespace CatScale.Domain.Model;
 
 public class Measurement
 {

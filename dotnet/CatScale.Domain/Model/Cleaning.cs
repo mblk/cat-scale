@@ -1,15 +1,17 @@
 using System.Text.Json.Serialization;
 
-namespace CatScale.Service.DbModel;
+namespace CatScale.Domain.Model;
 
-public class CatWeight
+public class Cleaning
 {
     public int Id { get; set; }
     
     [JsonIgnore]
-    public Cat Cat { get; set; } = null!;
+    public Toilet Toilet { get; set; } = null!;
     
     public DateTimeOffset Timestamp { get; set; }
+    
+    public double Time { get; set; }
     
     public double Weight { get; set; }
 }

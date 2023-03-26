@@ -1,0 +1,22 @@
+@using CatScale.Domain.Model
+@using CatScale.UI.BlazorServer.Data
+@using System.Diagnostics
+@using CatScale.Domain.Enums
+@inject ICatScaleService CatScaleService
+
+<div>
+    Poo counter: @_count
+</div>
+
+@code {
+
+    private int _count = -1;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        Debug.WriteLine($"PooCounter Update");
+        
+        var toilet = await CatScaleService.GetToiletDetails(1, ToiletDetails.SinceLastCleaning);
+        _count = toilet.Measurements.Count();
+    }
+}

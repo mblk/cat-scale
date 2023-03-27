@@ -1,6 +1,7 @@
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using CatScale.Service.RestModel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +20,7 @@ public class MeasurementController : ControllerBase
         _dbContext = dbContext;
     }
 
+    [Authorize(AuthenticationSchemes = "ApiKey")]
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] NewMeasurement newMeasurement)
     {

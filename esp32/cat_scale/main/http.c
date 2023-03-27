@@ -119,14 +119,21 @@ esp_err_t http_post_sensor_data_influx(const char *sensor_data)
     return ESP_OK;
 }
 
-esp_err_t http_post_json_data(const char *path, const char *json)
+#include "http_secrets.h"
+
+static esp_err_t http_post_json_data_with_endpoint(int endpoint, const char *path, const char *json)
 {
     assert(path);
     assert(json);
 
+    const char *addr = NULL;
+    const char *token = NULL;
+    get_http_secrets(endpoint, &addr, &token);
+    if (!addr || !token) return ESP_FAIL;
+
     char url[256] = {};
-    //snprintf(url, sizeof(url), "http://Media:5155/%s", path); // TODO get from config
-    snprintf(url, sizeof(url), "http://Framework:5155/%s", path); // TODO get from config
+    snprintf(url, sizeof(url), "http://%s/%s", addr, path);
+    ESP_LOGI(TAG, "Posting to '%s' ...", url);
 
     const esp_http_client_config_t config = {
         .url = url,
@@ -141,6 +148,8 @@ esp_err_t http_post_json_data(const char *path, const char *json)
     }
 
     esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_http_client_set_header(client, "Authorization", "ApiKey");
+    esp_http_client_set_header(client, "ApiKey", token);
     esp_http_client_set_post_field(client, json, strlen(json));
 
     esp_err_t ret = ESP_OK;
@@ -156,6 +165,19 @@ esp_err_t http_post_json_data(const char *path, const char *json)
     }
 
     esp_http_client_cleanup(client);
+
+    return ret;
+}
+
+esp_err_t http_post_json_data(const char *path, const char *json)
+{
+    esp_err_t ret = ESP_OK;
+
+    for(int i=0; i<3; i++)
+    {
+        if (http_post_json_data_with_endpoint(i, path, json) != ESP_OK)
+            ret = ESP_FAIL;
+    }
 
     return ret;
 }

@@ -1,6 +1,7 @@
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using CatScale.Service.RestModel;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CatScale.Service.Controllers;
@@ -26,6 +27,7 @@ public class CleaningController : ControllerBase
         return Ok(cleanings);
     }
     
+    [Authorize(AuthenticationSchemes = "ApiKey")]
     [HttpPost]
     public async Task<IActionResult> Post([FromBody] NewCleaning newCleaning)
     {

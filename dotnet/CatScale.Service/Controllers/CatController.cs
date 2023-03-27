@@ -1,6 +1,8 @@
 using CatScale.Domain.Enums;
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +21,8 @@ public class CatController : ControllerBase
         _dbContext = dbContext;
     }
 
+    //[Authorize(AuthenticationSchemes = $"{JwtBearerDefaults.AuthenticationScheme},ApiKey")]
+    //[Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
     [HttpGet]
     public IActionResult GetAll()
     {
@@ -30,6 +34,7 @@ public class CatController : ControllerBase
         return Ok(cats);
     }
     
+    //[Authorize(AuthenticationSchemes = $"{JwtBearerDefaults.AuthenticationScheme},ApiKey")]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<Cat>> GetOne(int id, CatDetails? details = null)
     {

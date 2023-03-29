@@ -1,4 +1,4 @@
-namespace CatScale.Service.RestModel;
+namespace CatScale.Service.Model.Cleaning;
 
 public record NewCleaning(
     DateTimeOffset Timestamp,

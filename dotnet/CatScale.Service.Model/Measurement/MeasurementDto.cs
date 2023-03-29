@@ -1,15 +1,9 @@
-using System.Text.Json.Serialization;
+namespace CatScale.Service.Model.Measurement;
 
-namespace CatScale.Domain.Model;
-
-public class Measurement
+public class MeasurementDto
 {
     public int Id { get; set; }
     
-    public Cat Cat { get; set; } = null!;
-    
-    public Toilet Toilet { get; set; } = null!;
-
     public DateTimeOffset Timestamp { get; set; }
     
     public double SetupTime { get; set; }

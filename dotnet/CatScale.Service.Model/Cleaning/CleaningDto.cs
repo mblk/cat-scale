@@ -1,13 +1,9 @@
-using System.Text.Json.Serialization;
+namespace CatScale.Service.Model.Cleaning;
 
-namespace CatScale.Domain.Model;
-
-public class Cleaning
+public class CleaningDto
 {
     public int Id { get; set; }
-    
-    public Toilet Toilet { get; set; } = null!;
-    
+   
     public DateTimeOffset Timestamp { get; set; }
     
     public double Time { get; set; }

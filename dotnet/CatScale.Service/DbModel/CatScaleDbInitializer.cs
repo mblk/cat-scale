@@ -42,6 +42,7 @@ public static class CatScaleDbInitializer
 
         context.Toilets.AddRange(toilets);
         context.Cats.AddRange(cats);
+        
         context.SaveChanges();
     }
 }

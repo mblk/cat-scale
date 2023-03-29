@@ -1,0 +1,75 @@
+@page "/ApiKeys"
+@using CatScale.Service.Model.User
+@using CatScale.UI.BlazorServer.Services
+@inject ICatScaleService CatScaleService
+
+<h3>ApiKeys</h3>
+
+<button class="btn btn-sm btn-primary" @onclick="Refresh">Refresh</button>
+<button class="btn btn-sm btn-primary" @onclick="CreateKey">Create</button>
+
+@if (_apiKeys is null)
+{
+    <p>Loading ...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>ApiKey</th>
+            <th>ExpirationDate</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var apiKey in _apiKeys)
+        {
+            <tr>
+                <td>@apiKey.Id</td>
+                <td>@apiKey.Value</td>
+                <td>@apiKey.ExpirationDate</td>
+                <td>
+                    <button class="btn btn-sm btn-primary" @onclick="@(_ => DeleteKey(apiKey.Id))">Delete</button>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    private UserApiKeyDto[]? _apiKeys;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh();
+    }
+
+    private async Task Refresh()
+    {
+        try
+        {
+            _apiKeys = await CatScaleService.GetApiKeys();
+
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+
+    private async Task DeleteKey(int apiKeyId)
+    {
+        await CatScaleService.DeleteApiKey(apiKeyId);
+        await Refresh();
+    }
+
+    private async Task CreateKey()
+    {
+        await CatScaleService.CreateApiKey(null);
+        await Refresh();
+    }
+}

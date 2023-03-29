@@ -2,7 +2,6 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using CatScale.Service.DbModel;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -26,7 +25,9 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
         if (!Request.Headers.ContainsKey(API_KEY_HEADER))
             return AuthenticateResult.Fail("Header Not Found.");
 
-        string apiKeyToValidate = Request.Headers[API_KEY_HEADER];
+        string? apiKeyToValidate = Request.Headers[API_KEY_HEADER];
+        if (String.IsNullOrWhiteSpace((apiKeyToValidate)))
+            return AuthenticateResult.Fail("Invalid key."); 
 
         var apiKey = await _context.UserApiKeys
             .Include(uak => uak.User)
@@ -38,12 +39,12 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
         return AuthenticateResult.Success(CreateTicket(apiKey.User));
     }
 
-    private AuthenticationTicket CreateTicket(IdentityUser user)
+    private AuthenticationTicket CreateTicket(ApplicationUser user)
     {
         var claims = new[] {
-            new Claim(ClaimTypes.NameIdentifier, user.Id),
-            new Claim(ClaimTypes.Name, user.UserName),
-            new Claim(ClaimTypes.Email, user.Email)
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user?.UserName ?? String.Empty),
+            new Claim(ClaimTypes.Email, user?.Email ?? String.Empty)
         };
 
         var identity = new ClaimsIdentity(claims, Scheme.Name);

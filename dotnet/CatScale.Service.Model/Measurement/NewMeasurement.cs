@@ -1,4 +1,4 @@
-namespace CatScale.Service.RestModel;
+namespace CatScale.Service.Model.Measurement;
 
 public record NewMeasurement(
     DateTimeOffset Timestamp,

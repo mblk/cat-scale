@@ -1,11 +1,11 @@
-@using CatScale.Domain.Model
-@using CatScale.UI.BlazorServer.Data
 @using System.Diagnostics
-@using CatScale.Domain.Enums
+@using CatScale.Service.Model.Toilet
+@using CatScale.UI.BlazorServer.Services
 @inject ICatScaleService CatScaleService
 
-<div>
-    Poo counter: @_count
+<div class="d-inline-flex align-items-center">
+    <div class="me-2 text-nowrap">Poo counter: @_count</div>
+    <button class="btn btn-sm btn-primary" @onclick="Refresh">Refresh</button>
 </div>
 
 @code {
@@ -14,9 +14,19 @@
     
     protected override async Task OnInitializedAsync()
     {
-        Debug.WriteLine($"PooCounter Update");
-        
-        var toilet = await CatScaleService.GetToiletDetails(1, ToiletDetails.SinceLastCleaning);
-        _count = toilet.Measurements.Count();
+        await Refresh();
+    }
+
+    private async Task Refresh()
+    {
+        try
+        {
+            var toilet = await CatScaleService.GetToiletDetails(1, ToiletDetails.SinceLastCleaning);
+            _count = toilet.Measurements.Count();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
     }
 }

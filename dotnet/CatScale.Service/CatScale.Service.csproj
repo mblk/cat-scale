@@ -16,12 +16,18 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="7.0.3" />
+    <PackageReference Include="Riok.Mapperly" Version="2.7.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.27.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CatScale.Domain\CatScale.Domain.csproj" />
+    <ProjectReference Include="..\CatScale.Service.Model\CatScale.Service.Model.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Migrations" />
   </ItemGroup>
 
 </Project>

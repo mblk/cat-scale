@@ -1,17 +1,19 @@
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
-using CatScale.Service.RestModel;
+using CatScale.Service.Mapper;
+using CatScale.Service.Model.Cleaning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CatScale.Service.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]/[action]")]
 public class CleaningController : ControllerBase
 {
     private readonly ILogger<CleaningController> _logger;
     private readonly CatScaleContext _dbContext;
+    private readonly DataMapper _mapper = new();
 
     public CleaningController(ILogger<CleaningController> logger, CatScaleContext dbContext)
     {
@@ -19,17 +21,9 @@ public class CleaningController : ControllerBase
         _dbContext = dbContext;
     }
 
-    [HttpGet]
-    public ActionResult<IEnumerable<Cleaning>> Get()
-    {
-        var cleanings = _dbContext.Cleanings;
-
-        return Ok(cleanings);
-    }
-    
     [Authorize(AuthenticationSchemes = "ApiKey")]
     [HttpPost]
-    public async Task<IActionResult> Post([FromBody] NewCleaning newCleaning)
+    public async Task<IActionResult> Create([FromBody] NewCleaning newCleaning)
     {
         _logger.LogInformation("New cleaning {cleaning}", newCleaning);
 
@@ -48,6 +42,6 @@ public class CleaningController : ControllerBase
         await _dbContext.Cleanings.AddAsync(cleaning);
         await _dbContext.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(Post), new { Id = cleaning.Id }, cleaning);
+        return CreatedAtAction(nameof(Create), new { Id = cleaning.Id }, cleaning);
     }
 }

@@ -1,15 +1,28 @@
-using System.Globalization;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
-using CatScale.UI.BlazorServer.Data;
+using CatScale.UI.BlazorServer.Services;
+using CatScale.UI.BlazorServer.Services.Authentication;
+using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
-builder.Services.AddTransient<ICatScaleService, CatScaleService>();
-builder.Services.AddLocalization();
+
+// builder.Services.AddOptions();
+// builder.Services.AddAuthorizationCore();  // xxx
+// builder.Services.AddAuthentication();     // xxx
+
+builder.Services.AddScoped<IdentityAuthenticationStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(s => s.GetRequiredService<IdentityAuthenticationStateProvider>());
+
+builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+builder.Services.AddScoped<ICatScaleService, CatScaleService>();
+
+var serviceAddr = builder.Configuration.GetValue<string>("CatScaleServiceAddr");
+if (String.IsNullOrWhiteSpace(serviceAddr)) throw new ArgumentException("invalid configuration, missing CatScaleServiceAddr");
+
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(serviceAddr) });
+
+
 
 var app = builder.Build();
 

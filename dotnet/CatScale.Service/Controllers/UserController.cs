@@ -1,102 +1,132 @@
-using CatScale.Service.RestModel;
+using CatScale.Service.DbModel;
+using CatScale.Service.Mapper;
+using CatScale.Service.Model.User;
 using CatScale.Service.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CatScale.Service.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]/[action]")]
 public class UserController : ControllerBase
 {
     private readonly ILogger<UserController> _logger;
-    private readonly UserManager<IdentityUser> _userManager;
-    private readonly IJwtService _jwtService;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly IApiKeyService _apiKeyService;
 
-    public UserController(ILogger<UserController> logger, UserManager<IdentityUser> userManager, IJwtService jwtService, IApiKeyService apiKeyService)
+    private readonly DataMapper _mapper = new();
+    
+    public UserController(ILogger<UserController> logger, UserManager<ApplicationUser> userManager, IApiKeyService apiKeyService)
     {
         _logger = logger;
         _userManager = userManager;
-        _jwtService = jwtService;
         _apiKeyService = apiKeyService;
     }
 
-    // [HttpGet("{username}")]
-    // public async Task<ActionResult<User>> GetUser(string username)
-    // {
-    //     IdentityUser? user = await _userManager.FindByNameAsync(username);
-    //     if (user is null)
-    //         return NotFound();
-    //
-    //     return new User
-    //     {
-    //         UserName = user.UserName,
-    //         Email = user.Email
-    //     };
-    // }
+    private async Task<ApplicationUser?> TryGetAuthorizedUser()
+    {
+        var currentUserName = User.Identity?.Name;
+        if (String.IsNullOrWhiteSpace(currentUserName))
+            return null;
+
+        return await _userManager.FindByNameAsync(currentUserName);
+    }
     
     [HttpPost]
-    public async Task<ActionResult<CreateUserResponse>> CreateUser(CreateUserRequest user)
+    public async Task<ActionResult<CreateUserResponse>> CreateUser(CreateUserRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
-
-        var result = await _userManager.CreateAsync(new IdentityUser()
+    
+        var result = await _userManager.CreateAsync(new ApplicationUser()
         {
-            UserName = user.UserName,
-            Email = user.Email,
-        }, user.Password);
-
+            UserName = request.UserName,
+            Email = request.Email,
+        }, request.Password);
+    
         if (!result.Succeeded)
             return BadRequest(result.Errors);
-
+    
         var response = new CreateUserResponse()
         {
-            UserName = user.UserName,
-            Email = user.Email,
+            UserName = request.UserName,
+            Email = request.Email,
         };
-
+        
+        _logger.LogInformation("Created new user {UserName}", request.UserName);
         return CreatedAtAction(nameof(CreateUser), new { username = response.UserName }, response);
     }
     
-    [HttpPost("BearerToken")]
-    public async Task<ActionResult<AuthenticationResponse>> CreateBearerToken(AuthenticationRequest request)
+    [Authorize]
+    [HttpGet]
+    public async Task<ActionResult<UserApiKeyDto[]>> GetApiKeys()
     {
-        _logger.LogInformation($"CreateBearerToken {ModelState.IsValid}");
-        
         if (!ModelState.IsValid)
-            return BadRequest("Bad credentials");
-
-        var user = await _userManager.FindByNameAsync(request.UserName);
+            return BadRequest(ModelState);
+        
+        var user = await TryGetAuthorizedUser();
         if (user is null)
-            return BadRequest("Bad credentials");
+            return BadRequest("Invalid user");
 
-        var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
-        if (!isPasswordValid)
-            return BadRequest("Bad credentials");
+        var apiKeys = (await _apiKeyService.GetApiKeys(user))
+            .Select(_mapper.MapUserApiKey);
 
-        var response = _jwtService.CreateToken(user);
-
-        return Ok(response);
+        return Ok(apiKeys);
     }
     
-    [HttpPost("ApiKey")]
-    public async Task<ActionResult<AuthenticationResponse>> CreateApiKey(AuthenticationRequest request)
+    [Authorize]
+    [HttpPost]
+    public async Task<ActionResult<UserApiKeyDto>> CreateApiKey(CreateApiKeyRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+        
+        var user = await TryGetAuthorizedUser();
+        if (user is null)
+            return BadRequest("Invalid user");
+        
+        var apiKey = await _apiKeyService.CreateApiKey(user, request.ExpirationDate);
+        var apiKeyDto = _mapper.MapUserApiKey(apiKey);
+
+        return CreatedAtAction(nameof(CreateApiKey), new { Id = apiKeyDto.Id }, apiKeyDto);
+    }
+
+    [Authorize]
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteApiKey(int id)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var user = await _userManager.FindByNameAsync(request.UserName);
+        var user = await TryGetAuthorizedUser();
         if (user is null)
-            return BadRequest("Bad credentials");
+            return BadRequest("Invalid user");
+        
+        await _apiKeyService.DeleteApiKey(user, id);
 
-        var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
-        if (!isPasswordValid)
-            return BadRequest("Bad credentials");
-
-        var response = await _apiKeyService.CreateApiKey(user);
-
-        return Ok(response);
+        return Ok();
     }
+    
+    // [HttpPost("BearerToken")]
+    // public async Task<ActionResult<AuthenticationResponse>> CreateBearerToken(AuthenticationRequest request)
+    // {
+    //     _logger.LogInformation($"CreateBearerToken {ModelState.IsValid}");
+    //     
+    //     if (!ModelState.IsValid)
+    //         return BadRequest("Bad credentials");
+    //
+    //     var user = await _userManager.FindByNameAsync(request.UserName);
+    //     if (user is null)
+    //         return BadRequest("Bad credentials");
+    //
+    //     var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+    //     if (!isPasswordValid)
+    //         return BadRequest("Bad credentials");
+    //
+    //     var response = _jwtService.CreateToken(user);
+    //
+    //     return Ok(response);
+    // }
 }

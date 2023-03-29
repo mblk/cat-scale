@@ -1,17 +1,21 @@
-using CatScale.Domain.Enums;
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
+using CatScale.Service.Mapper;
+using CatScale.Service.Model.Toilet;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]/[action]")]
 public class ToiletController : ControllerBase
 {
     private readonly ILogger<ToiletController> _logger;
     private readonly CatScaleContext _dbContext;
+
+    private readonly DataMapper _mapper = new();
 
     public ToiletController(ILogger<ToiletController> logger, CatScaleContext dbContext)
     {
@@ -20,22 +24,23 @@ public class ToiletController : ControllerBase
     }
 
     [HttpGet]
-    public IActionResult GetAll()
+    public ActionResult<IEnumerable<ToiletDto>> GetAll()
     {
         var toilets = _dbContext.Toilets
             .AsNoTracking()
             .Include(c => c.Cleanings)
-            .Include(c => c.Measurements);
+            .Include(c => c.Measurements)
+            .Select(_mapper.MapToilet);
 
         return Ok(toilets);
     }
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Toilet>> GetOne(int id, ToiletDetails? details)
+    public async Task<ActionResult<ToiletDto>> GetOne(int id, ToiletDetails? details)
     {
         _logger.LogInformation($"Get toilet {id} details {details}");
 
-        Toilet? toilet = null;
+        Toilet? toilet;
         
         switch (details)
         {
@@ -92,6 +97,6 @@ public class ToiletController : ControllerBase
         
         if (toilet is null)
             return NotFound();
-        return Ok(toilet);
+        return Ok(_mapper.MapToilet(toilet));
     }
 }

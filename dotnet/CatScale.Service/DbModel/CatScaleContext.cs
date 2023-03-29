@@ -1,11 +1,10 @@
 using CatScale.Domain.Model;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace CatScale.Service.DbModel;
 
-public class CatScaleContext : IdentityUserContext<IdentityUser>
+public class CatScaleContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
 {
     public DbSet<Toilet> Toilets { get; set; } = null!;
     public DbSet<Cat> Cats { get; set; } = null!;

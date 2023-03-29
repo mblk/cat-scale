@@ -155,36 +155,38 @@ namespace CatScale.Service.Migrations
                     b.ToTable("Toilets");
                 });
 
-            modelBuilder.Entity("CatScale.Service.RestModel.UserApiKey", b =>
+            modelBuilder.Entity("CatScale.Service.DbModel.ApplicationRole", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
                         .HasColumnType("text");
 
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("NormalizedName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("RoleNameIndex");
 
-                    b.HasIndex("Value")
-                        .IsUnique();
-
-                    b.ToTable("UserApiKeys");
+                    b.ToTable("AspNetRoles", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUser", b =>
+            modelBuilder.Entity("CatScale.Service.DbModel.ApplicationUser", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("text");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("integer");
@@ -245,7 +247,32 @@ namespace CatScale.Service.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
+            modelBuilder.Entity("CatScale.Service.DbModel.UserApiKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Value")
+                        .IsUnique();
+
+                    b.ToTable("UserApiKeys");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -259,9 +286,32 @@ namespace CatScale.Service.Migrations
                     b.Property<string>("ClaimValue")
                         .HasColumnType("text");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("AspNetRoleClaims", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClaimType")
                         .HasColumnType("text");
+
+                    b.Property<string>("ClaimValue")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -270,7 +320,7 @@ namespace CatScale.Service.Migrations
                     b.ToTable("AspNetUserClaims", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
                 {
                     b.Property<string>("LoginProvider")
                         .HasColumnType("text");
@@ -281,9 +331,8 @@ namespace CatScale.Service.Migrations
                     b.Property<string>("ProviderDisplayName")
                         .HasColumnType("text");
 
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
@@ -292,10 +341,25 @@ namespace CatScale.Service.Migrations
                     b.ToTable("AspNetUserLogins", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
                 {
-                    b.Property<string>("UserId")
-                        .HasColumnType("text");
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("AspNetUserRoles", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("LoginProvider")
                         .HasColumnType("text");
@@ -352,9 +416,9 @@ namespace CatScale.Service.Migrations
                     b.Navigation("Toilet");
                 });
 
-            modelBuilder.Entity("CatScale.Service.RestModel.UserApiKey", b =>
+            modelBuilder.Entity("CatScale.Service.DbModel.UserApiKey", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
+                    b.HasOne("CatScale.Service.DbModel.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -363,27 +427,51 @@ namespace CatScale.Service.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("CatScale.Service.DbModel.ApplicationRole", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+                {
+                    b.HasOne("CatScale.Service.DbModel.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("CatScale.Service.DbModel.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("CatScale.Service.DbModel.ApplicationRole", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CatScale.Service.DbModel.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+                {
+                    b.HasOne("CatScale.Service.DbModel.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)

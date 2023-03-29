@@ -1,6 +1,6 @@
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
-using CatScale.Service.RestModel;
+using CatScale.Service.Model.Measurement;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CatScale.Service.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]/[action]")]
 public class MeasurementController : ControllerBase
 {
     private readonly ILogger<MeasurementController> _logger;
@@ -22,7 +22,7 @@ public class MeasurementController : ControllerBase
 
     [Authorize(AuthenticationSchemes = "ApiKey")]
     [HttpPost]
-    public async Task<IActionResult> Post([FromBody] NewMeasurement newMeasurement)
+    public async Task<IActionResult> Create([FromBody] NewMeasurement newMeasurement)
     {
         _logger.LogInformation("New measurement {measurement}", newMeasurement);
 
@@ -64,6 +64,6 @@ public class MeasurementController : ControllerBase
         await _dbContext.Measurements.AddAsync(measurement);
         await _dbContext.SaveChangesAsync();
         
-        return CreatedAtAction(nameof(Post), new { Id = measurement.Id }, measurement);
+        return CreatedAtAction(nameof(Create), new { Id = measurement.Id }, measurement);
     }
 }

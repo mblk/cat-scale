@@ -1,8 +1,7 @@
 @page "/cat/{Id:int}"
-@using CatScale.Domain.Model
-@using CatScale.UI.BlazorServer.Data
-@using CatScale.Domain.Enums
 @using CatScale.UI.BlazorServer.Utils
+@using CatScale.UI.BlazorServer.Services
+@using CatScale.Service.Model.Cat
 @inject ICatScaleService CatScaleService
 
 <h3>Cat</h3>
@@ -17,7 +16,7 @@ else
     <p>Name: @_cat.Name</p>
     <p>DoB: @_cat.DateOfBirth</p>
     <p>Age: @CalculateAge(_cat)</p>
-                               
+
     <p>Weights:</p>
     <table class="table">
         <thead>
@@ -38,7 +37,7 @@ else
             }
         </tbody>
     </table>
-    
+
     <p>Measurements:</p>
     <table class="table">
         <thead>
@@ -73,14 +72,21 @@ else
     [Parameter]
     public int Id { get; set; }
     
-    private Cat? _cat;
-
+    private CatDto? _cat;
+    
     protected override async Task OnInitializedAsync()
     {
-        _cat = await CatScaleService.GetCatDetails(Id, CatDetails.All);
+        try
+        {
+            _cat = await CatScaleService.GetCatDetails(Id, CatDetails.All);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.ToString());
+        }
     }
     
-    private static int CalculateAge(Cat cat)
+    private static int CalculateAge(CatDto cat)
     {
         var dob = cat.DateOfBirth.ToDateTime(TimeOnly.MinValue);
         var age = DateTime.Now - dob;

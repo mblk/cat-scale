@@ -155,12 +155,12 @@ static void measurement_post_task()
             {
                 case event_type_measurement:
                     create_measurement_json(message_buffer, message_buffer_size, &e);
-                    http_post_json_data("Measurement", message_buffer);
+                    http_post_json_data("api/Measurement/Create", message_buffer);
                     break;
 
                 case event_type_cleaning:
                     create_cleaning_json(message_buffer, message_buffer_size, &e);
-                    http_post_json_data("Cleaning", message_buffer);
+                    http_post_json_data("api/Cleaning/Create", message_buffer);
                     break;
             }
         }

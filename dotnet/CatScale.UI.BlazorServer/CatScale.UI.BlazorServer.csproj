@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CatScale.Domain\CatScale.Domain.csproj" />
+    <ProjectReference Include="..\CatScale.Service.Model\CatScale.Service.Model.csproj" />
   </ItemGroup>
 
 </Project>

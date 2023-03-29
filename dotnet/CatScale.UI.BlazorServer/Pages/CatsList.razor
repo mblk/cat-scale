@@ -1,7 +1,6 @@
 @page "/cats"
-@using CatScale.Domain.Model
-@using CatScale.UI.BlazorServer.Data
-@using System.Diagnostics
+@using CatScale.Service.Model.Cat
+@using CatScale.UI.BlazorServer.Services
 @inject ICatScaleService CatScaleService
 
 <h3>Cats</h3>
@@ -38,14 +37,21 @@ else
 }
 
 @code {
-    private Cat[]? _cats;
-
+    private CatDto[]? _cats;
+    
     protected override async Task OnInitializedAsync()
     {
-        _cats = await CatScaleService.GetCatsList();
+        try
+        {
+            _cats = await CatScaleService.GetCatsList();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
     }
-
-    private static int CalculateAge(Cat cat)
+    
+    private static int CalculateAge(CatDto cat)
     {
         var dob = cat.DateOfBirth.ToDateTime(TimeOnly.MinValue);
         var age = DateTime.Now - dob;

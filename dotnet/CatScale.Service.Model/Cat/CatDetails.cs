@@ -1,4 +1,4 @@
-namespace CatScale.Domain.Enums;
+namespace CatScale.Service.Model.Cat;
 
 public enum CatDetails
 {

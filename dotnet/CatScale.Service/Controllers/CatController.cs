@@ -1,19 +1,19 @@
-using CatScale.Domain.Enums;
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
+using CatScale.Service.Mapper;
+using CatScale.Service.Model.Cat;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]/[action]")]
 public class CatController : ControllerBase
 {
     private readonly ILogger<CatController> _logger;
     private readonly CatScaleContext _dbContext;
+    private readonly DataMapper _mapper = new();
 
     public CatController(ILogger<CatController> logger, CatScaleContext dbContext)
     {
@@ -21,24 +21,22 @@ public class CatController : ControllerBase
         _dbContext = dbContext;
     }
 
-    //[Authorize(AuthenticationSchemes = $"{JwtBearerDefaults.AuthenticationScheme},ApiKey")]
-    //[Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
     [HttpGet]
-    public IActionResult GetAll()
+    public ActionResult<IEnumerable<CatDto>> GetAll()
     {
         var cats = _dbContext.Cats
             .AsNoTracking()
             .Include(c => c.Weights)
-            .Include(c => c.Measurements);
+            .Include(c => c.Measurements)
+            .Select(_mapper.MapCat);
 
         return Ok(cats);
     }
     
-    //[Authorize(AuthenticationSchemes = $"{JwtBearerDefaults.AuthenticationScheme},ApiKey")]
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<Cat>> GetOne(int id, CatDetails? details = null)
+    public async Task<ActionResult<CatDto>> GetOne(int id, CatDetails? details = null)
     {
-        Cat? cat = null;
+        Cat? cat;
         
         switch (details)
         {
@@ -59,6 +57,6 @@ public class CatController : ControllerBase
                 break;
         }
 
-        return cat is null ? NotFound() : Ok(cat);
+        return cat is null ? NotFound() : Ok(_mapper.MapCat(cat));
     }
 }

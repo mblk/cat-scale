@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CatScale.UI.BlazorWasm", "C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CatScale.Domain", "CatScale.Domain\CatScale.Domain.csproj", "{3003FF35-EC33-4F84-AF82-B5F28A7D6579}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CatScale.Service.Model", "CatScale.Service.Model\CatScale.Service.Model.csproj", "{1900A8CB-5636-4FB8-A925-B85C0D7C76F6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{3003FF35-EC33-4F84-AF82-B5F28A7D6579}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3003FF35-EC33-4F84-AF82-B5F28A7D6579}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3003FF35-EC33-4F84-AF82-B5F28A7D6579}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1900A8CB-5636-4FB8-A925-B85C0D7C76F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1900A8CB-5636-4FB8-A925-B85C0D7C76F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1900A8CB-5636-4FB8-A925-B85C0D7C76F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1900A8CB-5636-4FB8-A925-B85C0D7C76F6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

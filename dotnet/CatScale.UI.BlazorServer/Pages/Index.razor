@@ -1,4 +1,8 @@
 ﻿@page "/"
+@using CatScale.UI.BlazorServer.Services
+@using CatScale.UI.BlazorServer.Services.Authentication
+@inject IAuthenticationService AuthenticationService
+@inject ICatScaleService CatScaleService
 
 <style>
     .my-image {
@@ -7,9 +11,49 @@
     }
 </style>
 
-
 <PageTitle>Index</PageTitle>
 
 <h1>Toilettengeschichten mit Felix und Filou</h1>
 
 <img src="title.jpg" class="my-image" />
+
+<button class="btn btn-sm btn-secondary" @onclick="Test1">Test1</button>
+<button class="btn btn-sm btn-secondary" @onclick="Test2">Test2</button>
+
+<AuthorizeView>
+    <Authorized>
+        <p>Hello @context.User.Identity?.Name</p>
+    </Authorized>
+    <NotAuthorized>
+        <p>You're not authorized.</p>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code
+{
+    private async Task Test1()
+    {
+        try
+        {
+            var s = await AuthenticationService.Test();
+            Console.WriteLine($"Test: {s}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.ToString());
+        }
+    }
+
+    private async Task Test2()
+    {
+        try
+        {
+            var s = await CatScaleService.Test();
+            Console.WriteLine($"Test: {s}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.ToString());
+        }
+    }
+}

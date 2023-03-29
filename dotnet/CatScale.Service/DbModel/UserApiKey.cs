@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.DbModel;
@@ -10,7 +9,5 @@ public class UserApiKey
 
     public string Value { get; set; } = null!;
 
-    public string UserId { get; set; } = null!;
-
-    public IdentityUser User { get; set; } = null!;
+    public ApplicationUser User { get; set; } = null!;
 }

@@ -9,23 +9,36 @@
 
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="flex-column">
+        
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                 <span class="oi oi-home" aria-hidden="true"></span> Home
             </NavLink>
         </div>
+
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="toilets">
                 <span class="oi oi-box" aria-hidden="true"></span> Toilets
             </NavLink>
         </div>
+
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="cats">
                 <span class="oi oi-eye" aria-hidden="true"></span> Cats
             </NavLink>
         </div>
-        
+
         <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="settings">
+                        <span class="oi oi-cog" aria-hidden="true"></span> Settings
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Administrator">
             <Authorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="apikeys">
@@ -34,7 +47,7 @@
                 </div>
             </Authorized>
         </AuthorizeView>
-        
+
     </nav>
 </div>
 

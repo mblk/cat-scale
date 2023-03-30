@@ -18,6 +18,10 @@ public interface ICatScaleService // TODO split up
     Task<UserApiKeyDto> CreateApiKey(DateTime? expirationDate);
     Task DeleteApiKey(int apiKeyId);
 
+    Task<ApplicationUserDto> GetUserData();
+    Task ChangeUserPassword(string oldPassword, string newPassword);
+    Task DeleteUser(string password);
+
 }
 
 public class CatScaleService : ICatScaleService
@@ -105,6 +109,28 @@ public class CatScaleService : ICatScaleService
     public async Task DeleteApiKey(int apiKeyId)
     {
         var response = await _httpClient.DeleteAsync($"api/User/DeleteApiKey/{apiKeyId}");
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<ApplicationUserDto> GetUserData()
+    {
+        var userData = await _httpClient.GetFromJsonAsync<ApplicationUserDto>("api/User/Get");
+        if (userData is null) throw new Exception("kaputt");
+        return userData;
+    }
+
+    public async Task ChangeUserPassword(string oldPassword, string newPassword)
+    {
+        var request = new ChangePasswordRequest(oldPassword, newPassword);
+        var response = await _httpClient.PostAsJsonAsync("api/User/ChangePassword", request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task DeleteUser(string password)
+    {
+        var request = new DeleteUserRequest(password);
+
+        var response = await _httpClient.PostAsJsonAsync("api/User/DeleteUser", request);
         response.EnsureSuccessStatusCode();
     }
 }

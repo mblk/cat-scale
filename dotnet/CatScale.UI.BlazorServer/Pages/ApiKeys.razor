@@ -63,13 +63,27 @@ else
 
     private async Task DeleteKey(int apiKeyId)
     {
-        await CatScaleService.DeleteApiKey(apiKeyId);
-        await Refresh();
+        try
+        {
+            await CatScaleService.DeleteApiKey(apiKeyId);
+            await Refresh();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
     }
 
     private async Task CreateKey()
     {
-        await CatScaleService.CreateApiKey(null);
-        await Refresh();
+        try
+        {
+            await CatScaleService.CreateApiKey(null);
+            await Refresh();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
     }
 }

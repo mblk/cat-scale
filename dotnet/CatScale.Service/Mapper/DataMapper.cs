@@ -18,6 +18,7 @@ public partial class DataMapper // TODO static extension methods?
     public partial CleaningDto MapCleaning(Cleaning cleaning);
     public partial CatWeightDto MapCatWeight(CatWeight catWeight);
 
+    //public partial ApplicationUserDto MapApplicationUser(ApplicationUser user);
     //public partial UserApiKeyDto MapUserApiKey(UserApiKey apiKey);
 
     public UserApiKeyDto MapUserApiKey(UserApiKey apiKey)

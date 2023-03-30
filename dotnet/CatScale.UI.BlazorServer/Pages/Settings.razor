@@ -1,0 +1,203 @@
+@page "/Settings"
+@using CatScale.UI.BlazorServer.Services
+@using CatScale.Service.Model.User
+@inject ICatScaleService CatScaleService
+
+<h3>Settings</h3>
+
+@if (_showModal)
+{
+    <div class="modal fade show" style="display:block; background-color: rgba(10,10,10,.8);" aria-modal="true" role="dialog" @onclick="@ModalCancel">
+        <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
+    
+            <div class="modal-content">
+
+                <!-- Modal Header -->
+                <div class="modal-header">
+                    <h4 class="modal-title">Information</h4>
+                </div>
+
+                <!-- Modal body -->
+                <div class="modal-body">
+                    <p>@_modalMessage</p>
+                </div>
+
+                <!-- Modal footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="@ModalOk">OK</button>
+                    @* <button type="button" class="btn" @onclick="@ModalCancel">Cancel</button> *@
+                    @* <button type="button" class="btn btn-danger" @onclick=@ModalOk>Delete</button> *@
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+<button class="btn btn-sm btn-primary" @onclick="Refresh">Refresh</button>
+<button class="btn btn-sm btn-primary" @onclick="@(() => ShowModal("test"))">Modal test</button>
+
+@if (_userData is null)
+{
+    <p>Loading ...</p>
+}
+else
+{
+    <div>
+        
+        <hr/>
+        <h4>User data</h4>
+
+        <div class="input-group mb-1">
+            <span class="input-group-text col-sm-3">Username</span>
+            <input type="text" class="form-control" readonly value="@_userData.UserName">
+        </div>
+        <div class="input-group mb-1">
+            <span class="input-group-text col-sm-3">E-Mail</span>
+            <input type="text" class="form-control" readonly value="@_userData.EMail">
+        </div>
+        <div class="input-group mb-1">
+            <span class="input-group-text col-sm-3">Roles</span>
+            <input type="text" class="form-control" readonly value="@String.Join(",", _userData.Roles)">
+        </div>
+        <div class="input-group mb-1">
+            <span class="input-group-text col-sm-3">IsAdmin</span>
+            <input type="text" class="form-control" readonly value="@_userData.IsAdmin.ToString()">
+        </div>
+
+        <hr/>
+        <h4>Change password</h4>
+        <div class="input-group mb-1">
+            <span class="input-group-text col-sm-3">Current password</span>
+            <input type="password" class="form-control" @bind="_oldPassword">
+        </div>
+        <div class="input-group mb-1">
+            <span class="input-group-text col-sm-3">New password</span>
+            <input type="password" class="form-control" @bind="_newPassword">
+        </div>
+        <div class="input-group mb-1">
+            <span class="input-group-text col-sm-3">New password again</span>
+            <input type="password" class="form-control" @bind="_newPasswordConfirm">
+        </div>
+        <div class="d-flex justify-content-end">
+            <button class="btn btn-danger" @onclick="ChangePassword">Change password</button>
+        </div>
+
+        <hr/>
+        <h4>Delete user</h4>
+        <div class="input-group mb-1">
+            <span class="input-group-text col-sm-3">Current password</span>
+            <input type="password" class="form-control" @bind="_passwordForDelete">
+        </div>
+        <div class="d-flex justify-content-end">
+            <button class="btn btn-danger" @onclick="DeleteUser">Delete user</button>
+        </div>
+        
+        <hr/>
+        <h4>Claims</h4>
+        
+        <AuthorizeView>
+            <Authorized>
+                <p>Hello @context.User.Identity?.Name</p>
+                
+                @foreach (var claim in context.User.Claims)
+                {
+                    <p>@claim.Type = @claim.Value</p>
+                }
+            </Authorized>
+            <NotAuthorized>
+                <p>You're not authorized.</p>
+            </NotAuthorized>
+        </AuthorizeView>
+
+    </div>
+}
+
+@code {
+
+    private bool _showModal;
+    private string? _modalMessage;
+
+    private void ShowModal(string? message)
+    {
+        _modalMessage = message;
+        _showModal = true;
+    }
+    
+    private void ModalCancel()
+    {
+        _showModal = false;
+    }
+
+    private void ModalOk()
+    {
+        _showModal = false;
+    }
+    
+    private ApplicationUserDto? _userData;
+
+    private string? _oldPassword;
+    private string? _newPassword;
+    private string? _newPasswordConfirm;
+
+    private string? _passwordForDelete;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh();
+    }
+
+    private async Task Refresh()
+    {
+        try
+        {
+            _userData = null;
+            _userData = await CatScaleService.GetUserData();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        if (String.IsNullOrWhiteSpace(_oldPassword) ||
+            String.IsNullOrWhiteSpace(_newPassword) ||
+            String.IsNullOrWhiteSpace(_newPasswordConfirm) ||
+            _newPassword != _newPasswordConfirm)
+        {
+            ShowModal("Incorrect input");
+            return;
+        }
+
+        try
+        {
+            await CatScaleService.ChangeUserPassword(_oldPassword, _newPassword);
+            ShowModal($"Password changed successfully");
+        }
+        catch (Exception e)
+        {
+            ShowModal($"Error: {e.Message}");
+        }
+    }
+
+    private async Task DeleteUser()
+    {
+        if (String.IsNullOrWhiteSpace(_passwordForDelete))
+        {
+            ShowModal("Incorrect input");
+            return;
+        }
+
+        try
+        {
+            await CatScaleService.DeleteUser(_passwordForDelete);
+            ShowModal($"User deleted successfully");
+        }
+        catch (Exception e)
+        {
+            ShowModal($"Error: {e.Message}");
+        }
+    }
+}

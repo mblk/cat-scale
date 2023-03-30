@@ -33,7 +33,51 @@ public class UserController : ControllerBase
 
         return await _userManager.FindByNameAsync(currentUserName);
     }
-    
+
+    [Authorize]
+    [HttpGet]
+    public async Task<ActionResult<ApplicationUserDto>> Get()
+    {
+        var user = await TryGetAuthorizedUser();
+        if (user is null)
+            return BadRequest("Invalid user");
+
+        var roles = await _userManager.GetRolesAsync(user);
+        var isAdmin = roles.Contains(ApplicationRoles.Admin);
+        var userDto = new ApplicationUserDto(user.UserName ?? String.Empty, user.Email ?? String.Empty, roles.ToArray(), isAdmin);
+        
+        return Ok(userDto);
+    }
+
+    [Authorize]
+    [HttpPost]
+    public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+        
+        var user = await TryGetAuthorizedUser();
+        if (user is null)
+            return BadRequest("Invalid user");
+
+        var result = await _userManager.ChangePasswordAsync(user, request.OldPassword, request.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            _logger.LogError($"Failed to change password for user {user.UserName}");
+            return BadRequest(result.Errors);
+        }
+
+        result = await _userManager.UpdateSecurityStampAsync(user); // TODO try with and without
+        if (!result.Succeeded)
+        {
+            _logger.LogError($"Failed to update security stamp for user {user.UserName}");
+        }
+        
+        _logger.LogInformation($"Changed password for user {user.UserName}");
+        return Ok();
+    }
+
     [HttpPost]
     public async Task<ActionResult<CreateUserResponse>> CreateUser(CreateUserRequest request)
     {
@@ -58,6 +102,28 @@ public class UserController : ControllerBase
         _logger.LogInformation("Created new user {UserName}", request.UserName);
         return CreatedAtAction(nameof(CreateUser), new { username = response.UserName }, response);
     }
+
+    [Authorize]
+    [HttpPost]
+    public async Task<IActionResult> DeleteUser(DeleteUserRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+        
+        var user = await TryGetAuthorizedUser();
+        if (user is null)
+            return BadRequest("Invalid user");
+
+        if (await _userManager.CheckPasswordAsync(user, request.Password) == false)
+            return BadRequest("Invalid credentials");
+        
+        var result = await _userManager.DeleteAsync(user);
+        if (!result.Succeeded)
+            return BadRequest(result.Errors);
+        
+        _logger.LogInformation($"Deleted user {user.UserName}");
+        return Ok();
+    }
     
     [Authorize]
     [HttpGet]
@@ -76,7 +142,7 @@ public class UserController : ControllerBase
         return Ok(apiKeys);
     }
     
-    [Authorize]
+    [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpPost]
     public async Task<ActionResult<UserApiKeyDto>> CreateApiKey(CreateApiKeyRequest request)
     {
@@ -93,7 +159,7 @@ public class UserController : ControllerBase
         return CreatedAtAction(nameof(CreateApiKey), new { Id = apiKeyDto.Id }, apiKeyDto);
     }
 
-    [Authorize]
+    [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteApiKey(int id)
     {

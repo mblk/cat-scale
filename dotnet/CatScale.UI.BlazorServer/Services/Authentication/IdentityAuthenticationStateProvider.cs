@@ -40,8 +40,11 @@ public class IdentityAuthenticationStateProvider : AuthenticationStateProvider
         var userInfo = await GetUserInfo();
         if (userInfo != null && userInfo.IsAuthenticated)
         {
-            var claims = new[] { new Claim(ClaimTypes.Name, userInfo.UserName) }
-                .Concat(userInfo.ExposedClaims.Select(c => new Claim(c.Key, c.Value)));
+            var claims = 
+                new[] { new Claim(ClaimTypes.Name, userInfo.UserName) }
+                .Concat(userInfo.ExposedClaims.Select(c => new Claim(c.Type, c.Value)));
+                //.Concat(userInfo.ExposedClaims.Select(c => new Claim(c.Key, c.Value)));
+            
             identity = new ClaimsIdentity(claims, "Server authentication");
         }
 

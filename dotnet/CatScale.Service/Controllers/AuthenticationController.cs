@@ -56,7 +56,6 @@ public class AuthenticationController : ControllerBase
         return Ok();
     }
 
-    // TODO authorize ?
     [HttpGet]
     public ActionResult<UserInfo> UserInfo()
     {
@@ -67,9 +66,9 @@ public class AuthenticationController : ControllerBase
             IsAuthenticated = User.Identity?.IsAuthenticated ?? false,
             UserName = User.Identity?.Name ?? String.Empty,
             ExposedClaims = User.Claims
-                //Optionally: filter the claims you want to expose to the client
-                //.Where(c => c.Type == "test-claim")
-                .ToDictionary(c => c.Type, c => c.Value)
+                .Where(c => !String.IsNullOrWhiteSpace(c.Type) && !String.IsNullOrWhiteSpace(c.Value))
+                .Select(c => new UserClaim(c.Type, c.Value))
+                .ToArray(),
         };
 
         return Ok(userInfo);

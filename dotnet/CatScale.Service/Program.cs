@@ -75,18 +75,51 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+var configEnableMigration = app.Configuration.GetValue<bool>("Database:EnableMigration");
+var configPopulateUsers = app.Configuration.GetValue<bool>("Database:PopulateUsers");
+var configPopulateData = app.Configuration.GetValue<bool>("Database:PopulateData");
+
+Console.WriteLine($"Database config {configEnableMigration} {configPopulateUsers} {configPopulateData}");
+
+if (configEnableMigration)
 {
-    var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<CatScaleContext>();
-    //context.Database.EnsureDeleted();
-    //context.Database.EnsureCreated();
-    context.Database.Migrate();
-    CatScaleDbInitializer.Initialize(context);
-    
-    // create initial roles and users:
-    // https://stackoverflow.com/questions/34343599/how-to-seed-users-and-roles-with-code-first-migration-using-identity-asp-net-cor
-    //
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        var context = services.GetRequiredService<CatScaleContext>();
+        //context.Database.EnsureDeleted();
+        //context.Database.EnsureCreated();
+        context.Database.Migrate();
+    }
+}
+
+if (configPopulateData)
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        var context = services.GetRequiredService<CatScaleContext>();
+        CatScaleDbInitializer.Initialize(context);
+    }
+}
+
+if (configPopulateUsers)
+{
+    Task.Run(async () =>
+    {
+        Console.WriteLine($"Start of user init task");
+        
+        using (var scope = app.Services.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
+
+            await UserDbInitializer.Initialize(userManager, roleManager);
+        }
+        
+        Console.WriteLine($"End of user init task");
+    });
 }
 
 // Configure the HTTP request pipeline.

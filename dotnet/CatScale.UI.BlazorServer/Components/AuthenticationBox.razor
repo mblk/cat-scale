@@ -2,129 +2,43 @@
 @using System.Diagnostics
 @inject IAuthenticationService AuthenticationService;
 
-@switch (_state)
-{
-    case State.NotLoggedIn:
-        <div class="d-inline-flex">
+<AuthorizeView>
+    <Authorized>
+        <div class="d-inline-flex align-items-center">
+            <div class="me-2 text-nowrap">Hello @context.User.Identity?.Name</div>
             <div class="input-group input-group-sm">
-                <button class="btn btn-sm btn-primary" @onclick="StartLogin">Login</button>
-                <button class="btn btn-sm btn-secondary" @onclick="StartRegister">Register</button>
+                <button class="btn btn-sm btn-secondary" @onclick="Logout">Logout</button>
             </div>
         </div>
-        break;
-        
-    case State.LoggingIn:
+    </Authorized>
+    <NotAuthorized>
         <div class="d-inline-flex">
             <div class="input-group input-group-sm">
                 <input type="text" class="form-control form-control-sm" style="width: 100px" placeholder="Username" aria-label="Username" @bind="@_username">
                 <input type="password" class="form-control form-control-sm" style="width: 100px" placeholder="Password" aria-label="Password" @bind="@_password">
                 <button class="btn btn-sm btn-primary" @onclick="Login">Login</button>
-                <button class="btn btn-sm btn-secondary" @onclick="StopLogin">X</button>
             </div>
         </div>
-        break;
-        
-    case State.LoggedIn:
-        <div class="d-inline-flex align-items-center">
-            <div class="me-2 text-nowrap">Hello @_loggedInUser !</div>
-            <div class="input-group input-group-sm">
-                <button class="btn btn-sm btn-secondary" @onclick="Logout">Logout</button>
-            </div>
-        </div>
-        break;
-}
+    </NotAuthorized>
+</AuthorizeView>
 
 @code {
 
-    private enum State
-    {
-        NotLoggedIn,
-        LoggingIn,
-        LoggedIn,
-    }
-
-    private State _state = State.NotLoggedIn;
-    
-    
     private string? _username;
     private string? _password;
 
-    private string? _loggedInUser;
-
-    private bool _registeredToEvents;
-
-    protected override void OnInitialized()
-    {
-        Debug.WriteLine("Authbox OnInitialized");
-        base.OnInitialized();
-    }
-
-    protected override void OnParametersSet()
-    {
-        Debug.WriteLine("Authbox OnParametersSet");
-        base.OnParametersSet();
-
-        if (!_registeredToEvents)
-        {
-            AuthenticationService.AuthenticationChanged += AuthenticationServiceOnAuthenticationChanged;
-            _registeredToEvents = true;
-
-            //AuthenticationServiceOnAuthenticationChanged();
-        }
-    }
-
-    private async void AuthenticationServiceOnAuthenticationChanged()
-    {
-        try
-        {
-            var userInfo = await AuthenticationService.GetUserInfo();
-
-            if (userInfo != null && userInfo.IsAuthenticated)
-            {
-                _state = State.LoggedIn;
-                _loggedInUser = userInfo.UserName;
-            }
-            else
-            {
-                _state = State.NotLoggedIn;
-                _loggedInUser = String.Empty;
-            }
-
-            await InvokeAsync(StateHasChanged);
-        }
-        catch (Exception e)
-        {
-            Debug.WriteLine(e.ToString());
-        }
-    }
-
-    private void StartLogin()
-    {
-        _state = State.LoggingIn;
-    }
-
-    private void StopLogin()
-    {
-        _state = State.NotLoggedIn;
-    }
-    
-    private void StartRegister()
-    {
-    }
-    
     private async Task Login()
     {
         try
         {
-            if (_username is null || _password is null) return;
+            if (_username is null || _password is null) return; // TODO show error
 
             await AuthenticationService.Login(_username, _password);
-
-            // navigationManager.NavigateTo("");
         }
         catch (Exception e)
         {
             Debug.WriteLine(e.ToString());
+            // TODO show error
         }
     }
 
@@ -137,6 +51,7 @@
         catch (Exception e)
         {
             Debug.WriteLine(e.ToString());
+            // TODO show error
         }
     }
 }

@@ -6,5 +6,11 @@ public class UserInfo
 
     public string UserName { get; set; } = null!;
 
-    public Dictionary<string, string> ExposedClaims { get; set; } = null!;
+    public UserClaim[] ExposedClaims { get; set; } = null!;
 }
+
+public record UserClaim
+(
+    string Type,
+    string Value
+);

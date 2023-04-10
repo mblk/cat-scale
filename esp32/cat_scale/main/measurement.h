@@ -2,10 +2,8 @@
 
 #include <esp_err.h>
 
-esp_err_t measurement_init();
+esp_err_t measurement_init(void);
 
-double measurement_process_raw_weight(uint32_t weight_raw);
-int measurement_process_corrected_weight(double weight);
-
-void measurement_test_measurement();
-void measurement_test_cleaning();
+void measurement_mark_start_of_event(void);
+void measurement_push_stable_phase(double length, double value);
+void measurement_mark_end_of_event(void);

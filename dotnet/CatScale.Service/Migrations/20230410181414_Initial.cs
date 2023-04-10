@@ -227,12 +227,33 @@ namespace CatScale.Service.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Cleanings",
+                name: "ScaleEvents",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     ToiletId = table.Column<int>(type: "integer", nullable: false),
+                    StartTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    EndTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ScaleEvents", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ScaleEvents_Toilets_ToiletId",
+                        column: x => x.ToiletId,
+                        principalTable: "Toilets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Cleanings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ScaleEventId = table.Column<int>(type: "integer", nullable: false),
                     Timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     Time = table.Column<double>(type: "double precision", nullable: false),
                     Weight = table.Column<double>(type: "double precision", nullable: false)
@@ -241,9 +262,9 @@ namespace CatScale.Service.Migrations
                 {
                     table.PrimaryKey("PK_Cleanings", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Cleanings_Toilets_ToiletId",
-                        column: x => x.ToiletId,
-                        principalTable: "Toilets",
+                        name: "FK_Cleanings_ScaleEvents_ScaleEventId",
+                        column: x => x.ScaleEventId,
+                        principalTable: "ScaleEvents",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -255,7 +276,7 @@ namespace CatScale.Service.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     CatId = table.Column<int>(type: "integer", nullable: false),
-                    ToiletId = table.Column<int>(type: "integer", nullable: false),
+                    ScaleEventId = table.Column<int>(type: "integer", nullable: false),
                     Timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     SetupTime = table.Column<double>(type: "double precision", nullable: false),
                     PooTime = table.Column<double>(type: "double precision", nullable: false),
@@ -273,9 +294,31 @@ namespace CatScale.Service.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_Measurements_Toilets_ToiletId",
-                        column: x => x.ToiletId,
-                        principalTable: "Toilets",
+                        name: "FK_Measurements_ScaleEvents_ScaleEventId",
+                        column: x => x.ScaleEventId,
+                        principalTable: "ScaleEvents",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "StablePhases",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ScaleEventId = table.Column<int>(type: "integer", nullable: false),
+                    Timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    Length = table.Column<double>(type: "double precision", nullable: false),
+                    Value = table.Column<double>(type: "double precision", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StablePhases", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_StablePhases_ScaleEvents_ScaleEventId",
+                        column: x => x.ScaleEventId,
+                        principalTable: "ScaleEvents",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -323,9 +366,10 @@ namespace CatScale.Service.Migrations
                 column: "CatId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Cleanings_ToiletId",
+                name: "IX_Cleanings_ScaleEventId",
                 table: "Cleanings",
-                column: "ToiletId");
+                column: "ScaleEventId",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Measurements_CatId",
@@ -333,9 +377,20 @@ namespace CatScale.Service.Migrations
                 column: "CatId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Measurements_ToiletId",
+                name: "IX_Measurements_ScaleEventId",
                 table: "Measurements",
+                column: "ScaleEventId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ScaleEvents_ToiletId",
+                table: "ScaleEvents",
                 column: "ToiletId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_StablePhases_ScaleEventId",
+                table: "StablePhases",
+                column: "ScaleEventId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserApiKeys_UserId",
@@ -377,6 +432,9 @@ namespace CatScale.Service.Migrations
                 name: "Measurements");
 
             migrationBuilder.DropTable(
+                name: "StablePhases");
+
+            migrationBuilder.DropTable(
                 name: "UserApiKeys");
 
             migrationBuilder.DropTable(
@@ -386,10 +444,13 @@ namespace CatScale.Service.Migrations
                 name: "Cats");
 
             migrationBuilder.DropTable(
-                name: "Toilets");
+                name: "ScaleEvents");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
+
+            migrationBuilder.DropTable(
+                name: "Toilets");
         }
     }
 }

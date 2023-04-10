@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace CatScale.Domain.Model;
 
 public class Measurement
@@ -8,7 +6,8 @@ public class Measurement
     
     public Cat Cat { get; set; } = null!;
     
-    public Toilet Toilet { get; set; } = null!;
+    public int ScaleEventId { get; set; }
+    public ScaleEvent ScaleEvent { get; set; } = null!;
 
     public DateTimeOffset Timestamp { get; set; }
     

@@ -13,7 +13,6 @@ public class CatController : ControllerBase
 {
     private readonly ILogger<CatController> _logger;
     private readonly CatScaleContext _dbContext;
-    private readonly DataMapper _mapper = new();
 
     public CatController(ILogger<CatController> logger, CatScaleContext dbContext)
     {
@@ -28,7 +27,7 @@ public class CatController : ControllerBase
             .AsNoTracking()
             .Include(c => c.Weights)
             .Include(c => c.Measurements)
-            .Select(_mapper.MapCat);
+            .Select(DataMapper.MapCat);
 
         return Ok(cats);
     }
@@ -57,6 +56,6 @@ public class CatController : ControllerBase
                 break;
         }
 
-        return cat is null ? NotFound() : Ok(_mapper.MapCat(cat));
+        return cat is null ? NotFound() : Ok(DataMapper.MapCat(cat));
     }
 }

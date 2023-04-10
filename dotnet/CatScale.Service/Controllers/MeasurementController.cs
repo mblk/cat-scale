@@ -53,7 +53,7 @@ public class MeasurementController : ControllerBase
         {
             Cat = classifiedCat,
             Timestamp = newMeasurement.Timestamp.ToUniversalTime(),
-            Toilet = toilet,
+            //Toilet = toilet,
             SetupTime = newMeasurement.SetupTime,
             PooTime = newMeasurement.PooTime,
             CleanupTime = newMeasurement.CleanupTime,

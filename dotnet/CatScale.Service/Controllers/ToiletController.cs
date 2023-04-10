@@ -15,8 +15,6 @@ public class ToiletController : ControllerBase
     private readonly ILogger<ToiletController> _logger;
     private readonly CatScaleContext _dbContext;
 
-    private readonly DataMapper _mapper = new();
-
     public ToiletController(ILogger<ToiletController> logger, CatScaleContext dbContext)
     {
         _logger = logger;
@@ -28,9 +26,10 @@ public class ToiletController : ControllerBase
     {
         var toilets = _dbContext.Toilets
             .AsNoTracking()
-            .Include(c => c.Cleanings)
-            .Include(c => c.Measurements)
-            .Select(_mapper.MapToilet);
+            // .Include(c => c.Cleanings)
+            // .Include(c => c.Measurements)
+            .AsEnumerable()
+            .Select(DataMapper.MapToilet);
 
         return Ok(toilets);
     }
@@ -54,49 +53,49 @@ public class ToiletController : ControllerBase
                 break;
             }
 
-            case ToiletDetails.All:
-            {
-                toilet = await _dbContext.Toilets
-                    .AsNoTracking()
-                    .Include(c => c.Cleanings)
-                    .Include(c => c.Measurements)
-                    .SingleOrDefaultAsync(c => c.Id == id);
-                break;
-            }
+            //case ToiletDetails.All:
+            //{
+                // toilet = await _dbContext.Toilets
+                //     .AsNoTracking()
+                //     .Include(c => c.Cleanings)
+                //     .Include(c => c.Measurements)
+                //     .SingleOrDefaultAsync(c => c.Id == id);
+                //break;
+            //}
 
-            case ToiletDetails.SinceLastCleaning:
-            {
-                toilet = await _dbContext.Toilets
-                    .AsNoTracking()
-                    .Include(c => c.Cleanings)
-                    .Include(c => c.Measurements)
-                    .SingleOrDefaultAsync(c => c.Id == id);
-
-                if (toilet != null)
-                {
-                    var lastCleaning = toilet.Cleanings.MaxBy(c => c.Timestamp);
-                    var timeOfLastCleaning = lastCleaning?.Timestamp ?? DateTimeOffset.MinValue;
-                    var measurementsSinceLastCleaning =
-                        toilet.Measurements.Where(c => c.Timestamp > timeOfLastCleaning).ToList();
-                    
-                    toilet = new Toilet()
-                    {
-                        Id = toilet.Id,
-                        Name = toilet.Name,
-                        Description = toilet.Description,
-                        Cleanings = new List<Cleaning>(),
-                        Measurements = measurementsSinceLastCleaning,
-                    };
-                    
-                    if (lastCleaning != null) toilet.Cleanings.Add(lastCleaning);
-                }
+            //case ToiletDetails.SinceLastCleaning:
+            //{
+                // toilet = await _dbContext.Toilets
+                //     .AsNoTracking()
+                //     .Include(c => c.Cleanings)
+                //     .Include(c => c.Measurements)
+                //     .SingleOrDefaultAsync(c => c.Id == id);
+                //
+                // if (toilet != null)
+                // {
+                //     var lastCleaning = toilet.Cleanings.MaxBy(c => c.Timestamp);
+                //     var timeOfLastCleaning = lastCleaning?.Timestamp ?? DateTimeOffset.MinValue;
+                //     var measurementsSinceLastCleaning =
+                //         toilet.Measurements.Where(c => c.Timestamp > timeOfLastCleaning).ToList();
+                //     
+                //     toilet = new Toilet()
+                //     {
+                //         Id = toilet.Id,
+                //         Name = toilet.Name,
+                //         Description = toilet.Description,
+                //         Cleanings = new List<Cleaning>(),
+                //         Measurements = measurementsSinceLastCleaning,
+                //     };
+                //     
+                //     if (lastCleaning != null) toilet.Cleanings.Add(lastCleaning);
+                // }
                 
-                break;
-            }
+                //break;
+            //}
         }
         
         if (toilet is null)
             return NotFound();
-        return Ok(_mapper.MapToilet(toilet));
+        return Ok(DataMapper.MapToilet(toilet));
     }
 }

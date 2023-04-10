@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CatScale.Service.Migrations
 {
     [DbContext(typeof(CatScaleContext))]
-    [Migration("20230327160421_Initial")]
+    [Migration("20230410181414_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -77,21 +77,22 @@ namespace CatScale.Service.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("ScaleEventId")
+                        .HasColumnType("integer");
+
                     b.Property<double>("Time")
                         .HasColumnType("double precision");
 
                     b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("ToiletId")
-                        .HasColumnType("integer");
-
                     b.Property<double>("Weight")
                         .HasColumnType("double precision");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ToiletId");
+                    b.HasIndex("ScaleEventId")
+                        .IsUnique();
 
                     b.ToTable("Cleanings");
                 });
@@ -119,10 +120,37 @@ namespace CatScale.Service.Migrations
                     b.Property<double>("PooWeight")
                         .HasColumnType("double precision");
 
+                    b.Property<int>("ScaleEventId")
+                        .HasColumnType("integer");
+
                     b.Property<double>("SetupTime")
                         .HasColumnType("double precision");
 
                     b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatId");
+
+                    b.HasIndex("ScaleEventId")
+                        .IsUnique();
+
+                    b.ToTable("Measurements");
+                });
+
+            modelBuilder.Entity("CatScale.Domain.Model.ScaleEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("StartTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("ToiletId")
@@ -130,11 +158,36 @@ namespace CatScale.Service.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CatId");
-
                     b.HasIndex("ToiletId");
 
-                    b.ToTable("Measurements");
+                    b.ToTable("ScaleEvents");
+                });
+
+            modelBuilder.Entity("CatScale.Domain.Model.StablePhase", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<double>("Length")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("ScaleEventId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("Value")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScaleEventId");
+
+                    b.ToTable("StablePhases");
                 });
 
             modelBuilder.Entity("CatScale.Domain.Model.Toilet", b =>
@@ -391,13 +444,13 @@ namespace CatScale.Service.Migrations
 
             modelBuilder.Entity("CatScale.Domain.Model.Cleaning", b =>
                 {
-                    b.HasOne("CatScale.Domain.Model.Toilet", "Toilet")
-                        .WithMany("Cleanings")
-                        .HasForeignKey("ToiletId")
+                    b.HasOne("CatScale.Domain.Model.ScaleEvent", "ScaleEvent")
+                        .WithOne("Cleaning")
+                        .HasForeignKey("CatScale.Domain.Model.Cleaning", "ScaleEventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Toilet");
+                    b.Navigation("ScaleEvent");
                 });
 
             modelBuilder.Entity("CatScale.Domain.Model.Measurement", b =>
@@ -408,15 +461,37 @@ namespace CatScale.Service.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("CatScale.Domain.Model.Toilet", "Toilet")
-                        .WithMany("Measurements")
-                        .HasForeignKey("ToiletId")
+                    b.HasOne("CatScale.Domain.Model.ScaleEvent", "ScaleEvent")
+                        .WithOne("Measurement")
+                        .HasForeignKey("CatScale.Domain.Model.Measurement", "ScaleEventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Cat");
 
+                    b.Navigation("ScaleEvent");
+                });
+
+            modelBuilder.Entity("CatScale.Domain.Model.ScaleEvent", b =>
+                {
+                    b.HasOne("CatScale.Domain.Model.Toilet", "Toilet")
+                        .WithMany("ScaleEvents")
+                        .HasForeignKey("ToiletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Toilet");
+                });
+
+            modelBuilder.Entity("CatScale.Domain.Model.StablePhase", b =>
+                {
+                    b.HasOne("CatScale.Domain.Model.ScaleEvent", "ScaleEvent")
+                        .WithMany("StablePhases")
+                        .HasForeignKey("ScaleEventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ScaleEvent");
                 });
 
             modelBuilder.Entity("CatScale.Service.DbModel.UserApiKey", b =>
@@ -488,11 +563,18 @@ namespace CatScale.Service.Migrations
                     b.Navigation("Weights");
                 });
 
+            modelBuilder.Entity("CatScale.Domain.Model.ScaleEvent", b =>
+                {
+                    b.Navigation("Cleaning");
+
+                    b.Navigation("Measurement");
+
+                    b.Navigation("StablePhases");
+                });
+
             modelBuilder.Entity("CatScale.Domain.Model.Toilet", b =>
                 {
-                    b.Navigation("Cleanings");
-
-                    b.Navigation("Measurements");
+                    b.Navigation("ScaleEvents");
                 });
 #pragma warning restore 612, 618
         }

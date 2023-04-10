@@ -9,6 +9,8 @@ public class CatScaleContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Toilet> Toilets { get; set; } = null!;
     public DbSet<Cat> Cats { get; set; } = null!;
     public DbSet<CatWeight> CatWeights { get; set; } = null!;
+    public DbSet<ScaleEvent> ScaleEvents { get; set; } = null!;
+    public DbSet<StablePhase> StablePhases { get; set; } = null!;
     public DbSet<Measurement> Measurements { get; set; } = null!;
     public DbSet<Cleaning> Cleanings { get; set; } = null!;
 

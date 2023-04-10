@@ -15,8 +15,6 @@ public class UserController : ControllerBase
     private readonly ILogger<UserController> _logger;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IApiKeyService _apiKeyService;
-
-    private readonly DataMapper _mapper = new();
     
     public UserController(ILogger<UserController> logger, UserManager<ApplicationUser> userManager, IApiKeyService apiKeyService)
     {
@@ -137,7 +135,7 @@ public class UserController : ControllerBase
             return BadRequest("Invalid user");
 
         var apiKeys = (await _apiKeyService.GetApiKeys(user))
-            .Select(_mapper.MapUserApiKey);
+            .Select(DataMapper.MapUserApiKey);
 
         return Ok(apiKeys);
     }
@@ -154,7 +152,7 @@ public class UserController : ControllerBase
             return BadRequest("Invalid user");
         
         var apiKey = await _apiKeyService.CreateApiKey(user, request.ExpirationDate);
-        var apiKeyDto = _mapper.MapUserApiKey(apiKey);
+        var apiKeyDto = DataMapper.MapUserApiKey(apiKey);
 
         return CreatedAtAction(nameof(CreateApiKey), new { Id = apiKeyDto.Id }, apiKeyDto);
     }

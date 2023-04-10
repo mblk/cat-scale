@@ -1,13 +1,12 @@
-using System.Text.Json.Serialization;
-
 namespace CatScale.Domain.Model;
 
 public class Cleaning
 {
     public int Id { get; set; }
     
-    public Toilet Toilet { get; set; } = null!;
-    
+    public int ScaleEventId { get; set; }
+    public ScaleEvent ScaleEvent { get; set; } = null!;
+
     public DateTimeOffset Timestamp { get; set; }
     
     public double Time { get; set; }

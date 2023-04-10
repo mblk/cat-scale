@@ -21,66 +21,44 @@
 
 static const char *TAG = "measurement";
 
-enum event_type
-{
-    event_type_measurement,
-    event_type_cleaning
+enum event_type {
+    event_type_start_of_event,
+    event_type_stable_phase,
+    event_type_end_of_event
 };
 
-typedef struct
-{
-    uint32_t event_type;
+typedef struct {
+    const uint32_t event_type;
+    const struct timeval timestamp;
     union {
         struct {
-            double setup_time;
-            double poo_time;
-            double cleanup_time;
-            double cat_weight;
-            double poo_weight;
-        } m;
-        struct {
-            double cleaning_time;
-            double cleaning_weight;
-        } c;
-    };
+            const double length;
+            const double value;
+        } stable_phase;
+        // possibly other data later ...
+     };
 } event_t;
 
-enum measurement_state
-{
-    state_wait_for_idle = 0,
-    state_idle = 1,
-    state_setup = 2,
-    state_poo = 3,
-    state_cleanup = 4,
-    state_maintenance = 5,
-};
+typedef struct stable_phase {
+    const struct timeval timestamp;
+    const double length;
+    const double value;
+    struct stable_phase *next;
+} stable_phase_t;
 
-#define ZERO_DETECTION_TICKS        (2 * 30)        // 30s
-#define ZERO_DETECTION_THRESHOLD    (23 * 100)      // ~100g
-#define WEIGHT_HISTORY_SAMPLES      (2 * 5)         // 5s
-#define WEIGHT_SAMPLE_DT            (0.5)           // 2Hz, 0.5s
+typedef struct {
+    const struct timeval start;
+    struct timeval end;
+    stable_phase_t *first_stable_phase;
+    stable_phase_t *last_stable_phase;
+} scale_event_t;
 
 static MessageBufferHandle_t event_message_buffer = NULL;
 
-// zeroing
-static uint32_t raw_weight_prev_values[ZERO_DETECTION_TICKS] = {};
-static size_t raw_weight_prev_value_index = 0;
-static uint32_t raw_weight_zero_offset = 0;
-static bool weight_zeroing_enabled = true;
+static void measurement_post_task(void*);
 
-// measurement state machine
-static double weight_history_values[WEIGHT_HISTORY_SAMPLES] = {};
-static size_t weight_history_index = 0;
-static int measure_state = 0;
-static int ticks_in_current_state = 0;
-static int plausible_maintenance_ticks = 0;
-static event_t current_event = {};
-
-static void measurement_post_task();
-
-esp_err_t measurement_init()
+esp_err_t measurement_init(void)
 {
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
     ESP_LOGI(TAG, "measurement_init");
 
     event_message_buffer = xMessageBufferCreate(1024);
@@ -91,59 +69,153 @@ esp_err_t measurement_init()
     return ESP_OK;
 }
 
-static size_t create_measurement_json(char *message_buffer, size_t message_buffer_size, const event_t *event)
+static scale_event_t *create_scale_event(const event_t *event)
 {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
+    assert(event);
 
-    char time_buffer[32] = {};
-    convert_timeval_to_iso8601(tv, time_buffer, sizeof(time_buffer));
+    const scale_event_t init = {
+        .start = event->timestamp,
+    };
 
-    return snprintf(message_buffer, message_buffer_size,
-        "{"
-        "\"toiletId\":1," // TODO from config?
-        "\"timeStamp\":\"%s\","
-        "\"setupTime\":%0.3f,"
-        "\"pooTime\":%0.3f,"
-        "\"cleanupTime\":%0.3f,"
-        "\"catWeight\":%0.3f,"
-        "\"pooWeight\":%0.3f"
-        "}",
-        time_buffer,
-        event->m.setup_time,
-        event->m.poo_time,
-        event->m.cleanup_time,
-        event->m.cat_weight,
-        event->m.poo_weight);
+    scale_event_t *scale_event = malloc(sizeof(scale_event_t));
+    assert(scale_event);
+    memcpy(scale_event, &init, sizeof(scale_event_t));
+
+    return scale_event;
 }
 
-static size_t create_cleaning_json(char *message_buffer, size_t message_buffer_size, const event_t *event)
+static void finish_scale_event(scale_event_t *scale_event, const event_t *event)
 {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
+    assert(scale_event);
+    assert(event);
 
-    char time_buffer[32] = {};
-    convert_timeval_to_iso8601(tv, time_buffer, sizeof(time_buffer));
-
-    return snprintf(message_buffer, message_buffer_size,
-        "{"
-        "\"toiletId\":1," // TODO from config?
-        "\"timeStamp\":\"%s\","
-        "\"cleaningTime\":%0.3f,"
-        "\"cleaningWeight\":%0.3f"
-        "}",
-        time_buffer,
-        event->c.cleaning_time,
-        event->c.cleaning_weight);
+    scale_event->end = event->timestamp;
 }
 
-static void measurement_post_task()
+static void destroy_scale_event(scale_event_t *scale_event)
+{
+    assert(scale_event);
+
+    stable_phase_t *current = scale_event->first_stable_phase;
+    while(current) {
+        stable_phase_t *next = current->next;
+        free(current);
+        current = next;
+    }
+
+    free(scale_event);
+}
+
+static void add_stable_phase(scale_event_t *scale_event, const event_t *event)
+{
+    assert(scale_event);
+    assert(event);
+
+    const stable_phase_t init = {
+        .timestamp = event->timestamp,
+        .length = event->stable_phase.length,
+        .value = event->stable_phase.value,
+        .next = NULL,
+    };
+
+    stable_phase_t *stable_phase = malloc(sizeof(stable_phase_t));
+    assert(stable_phase);
+    memcpy(stable_phase, &init, sizeof(stable_phase_t));
+
+    if (scale_event->first_stable_phase == NULL || scale_event->last_stable_phase == NULL) {
+        scale_event->first_stable_phase = stable_phase;
+        scale_event->last_stable_phase = stable_phase;
+    } else {
+        scale_event->last_stable_phase->next = stable_phase;
+        scale_event->last_stable_phase = stable_phase;
+    }
+}
+
+static esp_err_t serialize_scale_event(const scale_event_t *scale_event, char *output_buffer, size_t output_buffer_size)
+{
+    assert(scale_event);
+    memset(output_buffer, 0, output_buffer_size);
+    size_t written_characters = 0;
+
+    const int toiletId = 1; // TODO from config?
+
+    char start_time_buffer[32] = {};
+    char end_time_buffer[32] = {};
+    convert_timeval_to_iso8601(scale_event->start, start_time_buffer, sizeof(start_time_buffer));
+    convert_timeval_to_iso8601(scale_event->end, end_time_buffer, sizeof(end_time_buffer));
+
+    // prefix
+    written_characters += snprintf(
+        output_buffer + written_characters,
+        output_buffer_size - written_characters,
+        "{"
+        "\"toiletId\": %d,"
+        "\"startTime\": \"%s\","
+        "\"endTime\": \"%s\","
+        "\"stablePhases\": [",
+        toiletId,
+        start_time_buffer,
+        end_time_buffer
+        );
+
+    if (written_characters >= output_buffer_size) {
+        ESP_LOGE(TAG, "buffer full #1");
+        return ESP_ERR_NO_MEM;
+    }
+
+    // stable phases
+    stable_phase_t *stable_phase = scale_event->first_stable_phase;
+    while(stable_phase) {
+
+        char time_buffer[32] = {};
+        convert_timeval_to_iso8601(stable_phase->timestamp, time_buffer, sizeof(time_buffer));
+
+        written_characters += snprintf(
+            output_buffer + written_characters,
+            output_buffer_size - written_characters,
+            "{"
+            "\"timestamp\": \"%s\","
+            "\"length\": %0.1f,"
+            "\"value\": %0.1f"
+            "}%s",
+            time_buffer,
+            stable_phase->length,
+            stable_phase->value,
+            stable_phase->next ? "," : ""
+        );
+
+        if (written_characters >= output_buffer_size) {
+            ESP_LOGE(TAG, "buffer full #2");
+            return ESP_ERR_NO_MEM;
+        }
+
+        stable_phase = stable_phase->next;
+    }
+
+    // postfix
+    written_characters += snprintf(
+        output_buffer + written_characters,
+        output_buffer_size - written_characters,
+        "]}");
+
+    if (written_characters >= output_buffer_size) {
+        ESP_LOGE(TAG, "buffer full #3");
+        return ESP_ERR_NO_MEM;
+    }
+
+    return ESP_OK;
+}
+
+static void measurement_post_task(void*)
 {
     ESP_LOGI(TAG, "measurement_post_task");
 
-    const size_t message_buffer_size = 1024;
-    char * const message_buffer = malloc(message_buffer_size);
+    scale_event_t *current_event = NULL;
+
+    const size_t message_buffer_size = 4 * 1024;
+    char *message_buffer = malloc(message_buffer_size);
     assert(message_buffer);
+    memset(message_buffer, 0, message_buffer_size);
 
     while(true)
     {
@@ -153,292 +225,100 @@ static void measurement_post_task()
         {
             switch (e.event_type)
             {
-                case event_type_measurement:
-                    create_measurement_json(message_buffer, message_buffer_size, &e);
-                    http_post_json_data("api/Measurement/Create", message_buffer);
+                case event_type_start_of_event:
+                    ESP_LOGI(TAG, "Post task: received start of event");
+                    if (current_event)
+                        destroy_scale_event(current_event);
+                    current_event = create_scale_event(&e);
                     break;
 
-                case event_type_cleaning:
-                    create_cleaning_json(message_buffer, message_buffer_size, &e);
-                    http_post_json_data("api/Cleaning/Create", message_buffer);
+                case event_type_stable_phase:
+                    ESP_LOGI(TAG, "Post task: received stable phase");
+                    if (current_event)
+                        add_stable_phase(current_event, &e);
+                    break;
+
+                case event_type_end_of_event:
+                    ESP_LOGI(TAG, "Post task: received end of event");
+                    if (current_event)
+                    {
+                        finish_scale_event(current_event, &e);
+
+                        ESP_LOGI(TAG, "Posting scale event data (%zu bytes) ...", strlen(message_buffer));
+                        esp_err_t ret = serialize_scale_event(current_event, message_buffer, message_buffer_size);
+                        if (ret == ESP_OK) {
+                            ret = http_post_json_data("api/ScaleEvent/Create", message_buffer);
+                            if (ret != ESP_OK) {
+                                ESP_LOGE(TAG, "Failed to post scale event data");
+                            }
+                        } else {
+                            ESP_LOGE(TAG, "Failed to serialize scale event");
+                        }
+
+                        destroy_scale_event(current_event);
+                        current_event = NULL;
+                    }
+                    break;
+
+                default:
+                    ESP_LOGI(TAG, "Post task: received unknown event");
                     break;
             }
         }
-        else
-        {
-            ESP_LOGE(TAG, "Incomplete read from measurement buffer (got %u/%u)", bytes_read, sizeof(event_t));
-        }
     }
 }
 
-static void calculate_spread_avg_uint32(const uint32_t *values, size_t count, uint32_t *spread, uint32_t *avg)
+static void send_event(const event_t *event)
 {
-    uint32_t min = values[0];
-    uint32_t max = values[0];
-    uint64_t sum = 0;
-
-    for (size_t i = 0; i < count; i++)
-    {
-        uint32_t v = values[i];
-        sum += v;
-        if (v < min)
-            min = v;
-        if (v > max)
-            max = v;
-    }
-
-    *spread = max - min;
-    *avg = (uint32_t)round((double)sum / (double)count);
-}
-
-static void calculate_spread_avg_double(const double *values, size_t count, double *spread, double *avg)
-{
-    double min = values[0];
-    double max = values[0];
-    double sum = 0;
-
-    for (size_t i = 0; i < count; i++)
-    {
-        double v = values[i];
-        sum += v;
-        if (v < min)
-            min = v;
-        if (v > max)
-            max = v;
-    }
-
-    *spread = max - min;
-    *avg = sum / (double)count;
-}
-
-double measurement_process_raw_weight(uint32_t weight_raw) // called at 2 Hz
-{
-    // first time?
-    if (raw_weight_zero_offset == 0)
-    {
-        raw_weight_zero_offset = weight_raw;
-        for (size_t i = 0; i < ZERO_DETECTION_TICKS; i++)
-            raw_weight_prev_values[i] = weight_raw;
-    }
-
-    // store values in ring-buffer
-    raw_weight_prev_values[raw_weight_prev_value_index] = weight_raw;
-    raw_weight_prev_value_index = (raw_weight_prev_value_index + 1) % ZERO_DETECTION_TICKS;
-
-    // inspect signal
-    uint32_t spread = 0, avg = 0;
-    calculate_spread_avg_uint32(raw_weight_prev_values, ZERO_DETECTION_TICKS, &spread, &avg);
-    ESP_LOGD(TAG, "raw spread over %u samples was %u", ZERO_DETECTION_TICKS, spread);
-
-    if (spread < ZERO_DETECTION_THRESHOLD && weight_zeroing_enabled) // TODO dynamic threshold?
-    {
-        raw_weight_zero_offset = avg;
-        // ESP_LOGI(TAG, "new zero offset %u", raw_weight_zero_offset);
-    }
-
-    const int32_t weight_raw_zeroed = (int32_t)weight_raw - (int32_t)raw_weight_zero_offset;
-
-    // convert raw value to grams
-    const uint32_t v_zero  = 8612000;
-    const uint32_t v_calib = 8825500;
-    const uint32_t m_zero  = 0;
-    const uint32_t m_calib = 9800; // g
-    const uint32_t dv = v_calib - v_zero;
-    const uint32_t dm = m_calib - m_zero;
-    const double v_per_m = (double)dv / (double)dm; // change in value per gram
-
-    const double weight = (double)weight_raw_zeroed / v_per_m;
-
-    return weight;
-}
-
-static void push_measurement()
-{
-    ESP_LOGI(TAG, "push_measurement setup=%0.1f poo=%0.1f cleanup=%0.1f cat_weight=%0.1f poo_weight=%0.1f",
-             current_event.m.setup_time, current_event.m.poo_time, current_event.m.cleanup_time,
-             current_event.m.cat_weight, current_event.m.poo_weight);
-
-    current_event.event_type = event_type_measurement;
-
-    size_t bytes_written = xMessageBufferSend(event_message_buffer, &current_event, sizeof(event_t), 0);
+    assert(event);
+    size_t bytes_written = xMessageBufferSend(event_message_buffer, event, sizeof(event_t), 0);
     if (bytes_written != sizeof(event_t))
-    {
-        ESP_LOGE(TAG, "Failed to add measurement to buffer");
-    }
+        ESP_LOGE(TAG, "Failed to add event to buffer");
 }
 
-static void push_cleaning()
+void measurement_mark_start_of_event(void)
 {
-    ESP_LOGI(TAG, "push_cleaning cleaning_time=%0.1f cleaning_weight=%0.1f",
-            current_event.c.cleaning_time, current_event.c.cleaning_weight);
+    ESP_LOGI(TAG, "measurement_mark_start_of_event");
 
-    current_event.event_type = event_type_cleaning;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
 
-    size_t bytes_written = xMessageBufferSend(event_message_buffer, &current_event, sizeof(event_t), 0);
-    if (bytes_written != sizeof(event_t))
-    {
-        ESP_LOGE(TAG, "Failed to add cleaning to buffer");
-    }
-}
-
-static void enter_state(int new_state)
-{
-    ESP_LOGD(TAG, "state change %d -> %d", measure_state, new_state);
-    measure_state = new_state;
-    ticks_in_current_state = 0;
-}
-
-int measurement_process_corrected_weight(double weight) // called at 2 Hz
-{
-    // store values in ring-buffer
-    weight_history_values[weight_history_index] = weight;
-    weight_history_index = (weight_history_index + 1) % WEIGHT_HISTORY_SAMPLES;
-
-    // inspect signal
-    double spread = 0, avg = 0;
-    calculate_spread_avg_double(weight_history_values, WEIGHT_HISTORY_SAMPLES, &spread, &avg);
-
-    const bool is_stable                = spread < 15.0; // TODO dynamic based on recent noise levels?
-    const bool is_zero                  = avg < 10.0;
-    const bool is_plausible_cat         = 1000.0 < avg && avg < 10000.0;
-    const bool is_plausible_maintenance = avg < -500.0;
-
-    ESP_LOGD(TAG, "state=%d, weight=%0.1f, is_stable=%s, spread %0.1f, avg %0.1f", measure_state, weight, is_stable ? "yes" : "no", spread, avg);
-
-    // enter maintenance?
-    if (is_plausible_maintenance)
-    {
-        plausible_maintenance_ticks++;
-        if (plausible_maintenance_ticks > 5)
-        {
-            memset(&current_event, 0, sizeof(event_t));
-            enter_state(state_maintenance);
-        }
-    }
-    else
-    {
-        plausible_maintenance_ticks = 0;
-    }
-
-    // update state machine
-    switch (measure_state)
-    {
-        case state_wait_for_idle: // wait for zero
-        {
-            if (is_stable && is_zero)
-            {
-                enter_state(state_idle);
-            }
-            break;
-        }
-
-        case state_idle: // wait for significant weight
-        {
-            if (is_plausible_cat)
-            {
-                memset(&current_event, 0, sizeof(event_t));
-                enter_state(state_setup);
-            }
-            break;
-        }
-
-        case state_setup: // wait for stable signal
-        {
-            current_event.m.setup_time += WEIGHT_SAMPLE_DT;
-
-            if (is_stable && is_plausible_cat)
-            {
-                current_event.m.setup_time -= WEIGHT_HISTORY_SAMPLES * WEIGHT_SAMPLE_DT;
-                current_event.m.poo_time += WEIGHT_HISTORY_SAMPLES * WEIGHT_SAMPLE_DT;
-                current_event.m.cat_weight = avg;
-                enter_state(state_poo);
-            }
-            break;
-        }
-
-        case state_poo: // wait for end of stable signal
-        {
-            current_event.m.poo_time += WEIGHT_SAMPLE_DT;
-
-            if (!is_stable)
-            {
-                enter_state(state_cleanup);
-            }
-            break;
-        }
-
-        case state_cleanup: // wait for cat to leave
-        {
-            current_event.m.cleanup_time += WEIGHT_SAMPLE_DT;
-
-            if (is_stable && !is_plausible_cat)
-            {
-                current_event.m.poo_weight = avg;
-                push_measurement();
-                enter_state(state_wait_for_idle);
-            }
-            break;
-        }
-
-        case state_maintenance: // maintenance (ie. cleaning or refilling)
-        {
-            current_event.c.cleaning_time += WEIGHT_SAMPLE_DT;
-
-            if (is_stable && !is_plausible_maintenance && current_event.c.cleaning_time > 30.0)
-            {
-                current_event.c.cleaning_weight = avg;
-                push_cleaning();
-                enter_state(state_wait_for_idle);
-            }
-            break;
-        }
-
-        default:
-        {
-            ESP_LOGE(TAG, "invalid state %d", measure_state);
-            enter_state(state_wait_for_idle);
-            break;
-        }
-    }
-
-    // timeout?
-    ticks_in_current_state++;
-    if (measure_state > state_idle && ticks_in_current_state > 60*2 * 5) // 5min
-    {
-        ESP_LOGE(TAG, "Timeout in state %d", measure_state);
-        enter_state(state_wait_for_idle);
-    }
-
-    weight_zeroing_enabled = (measure_state == state_wait_for_idle || measure_state == state_idle);
-
-    return measure_state;
-}
-
-void measurement_test_measurement()
-{
     const event_t e = {
-        .event_type = event_type_measurement,
-        .m.setup_time = 1,
-        .m.poo_time = 2,
-        .m.cleanup_time = 3,
-        .m.cat_weight = 3000,
-        .m.poo_weight = 100
+        .event_type = event_type_start_of_event,
+        .timestamp = tv,
     };
 
-    size_t bytes_written = xMessageBufferSend(event_message_buffer, &e, sizeof(event_t), 0);
-    if (bytes_written != sizeof(event_t))
-        ESP_LOGE(TAG, "Failed to add measurement to buffer");
+    send_event(&e);
 }
 
-void measurement_test_cleaning()
+void measurement_push_stable_phase(double length, double value)
 {
+    ESP_LOGI(TAG, "measurement_push_stable_phase %0.1f %0.1f", length, value);
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
     const event_t e = {
-        .event_type = event_type_cleaning,
-        .c.cleaning_time = 10,
-        .c.cleaning_weight = -100
+        .event_type = event_type_stable_phase,
+        .timestamp = tv,
+        .stable_phase.length = length,
+        .stable_phase.value = value,
     };
 
-    size_t bytes_written = xMessageBufferSend(event_message_buffer, &e, sizeof(event_t), 0);
-    if (bytes_written != sizeof(event_t))
-        ESP_LOGE(TAG, "Failed to add cleaning to buffer");
+    send_event(&e);
+}
+
+void measurement_mark_end_of_event(void)
+{
+    ESP_LOGI(TAG, "measurement_mark_end_of_event");
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    const event_t e = {
+        .event_type = event_type_end_of_event,
+        .timestamp = tv,
+    };
+
+    send_event(&e);
 }

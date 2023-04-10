@@ -173,7 +173,7 @@ esp_err_t http_post_json_data(const char *path, const char *json)
 {
     esp_err_t ret = ESP_OK;
 
-    for(int i=0; i<3; i++)
+    for(int i=0; i<2; i++)
     {
         if (http_post_json_data_with_endpoint(i, path, json) != ESP_OK)
             ret = ESP_FAIL;

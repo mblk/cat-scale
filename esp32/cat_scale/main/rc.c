@@ -149,8 +149,9 @@ esp_err_t rc_init()
 }
 
 #define RC_COMMAND_REBOOT               0x01
-#define RC_COMMAND_TEST_MEASUREMENT     0x02
-#define RC_COMMAND_TEST_CLEANING        0x04
+#define RC_COMMAND_TEST_START           0x02
+#define RC_COMMAND_TEST_STABLE          0x04
+#define RC_COMMAND_TEST_END             0x08
 
 typedef struct {
     size_t total_bytes_received;
@@ -223,15 +224,20 @@ static void process_data(process_state_t *state, void *data, size_t length)
                 ESP_LOGI(TAG, "Reboot command received");
                 state->commands_received |= RC_COMMAND_REBOOT;
             }
-            else if (strncmp(data, "measure", 7) == 0)
+            else if (strncmp(data, "start", 5) == 0)
             {
-                ESP_LOGI(TAG, "Test measurement command received");
-                state->commands_received |= RC_COMMAND_TEST_MEASUREMENT;
+                ESP_LOGI(TAG, "Test start command received");
+                state->commands_received |= RC_COMMAND_TEST_START;
             }
-            else if (strncmp(data, "clean", 5) == 0)
+            else if (strncmp(data, "stable", 6) == 0)
             {
-                ESP_LOGI(TAG, "Test cleaning command received");
-                state->commands_received |= RC_COMMAND_TEST_CLEANING;
+                ESP_LOGI(TAG, "Test stable command received");
+                state->commands_received |= RC_COMMAND_TEST_STABLE;
+            }
+            else if (strncmp(data, "end", 3) == 0)
+            {
+                ESP_LOGI(TAG, "Test end command received");
+                state->commands_received |= RC_COMMAND_TEST_END;
             }
             else
             {
@@ -305,14 +311,19 @@ static void process_end(process_state_t *state)
         esp_restart();
     }
 
-    if (state->commands_received & RC_COMMAND_TEST_MEASUREMENT)
+    if (state->commands_received & RC_COMMAND_TEST_START)
     {
-        measurement_test_measurement();
+        measurement_mark_start_of_event();
     }
 
-    if (state->commands_received & RC_COMMAND_TEST_CLEANING)
+    if (state->commands_received & RC_COMMAND_TEST_STABLE)
     {
-        measurement_test_cleaning();
+        measurement_push_stable_phase(10.0, 3333.0);
+    }
+
+    if (state->commands_received & RC_COMMAND_TEST_END)
+    {
+        measurement_mark_end_of_event();
     }
 }
 

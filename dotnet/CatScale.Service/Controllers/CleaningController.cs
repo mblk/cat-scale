@@ -13,7 +13,6 @@ public class CleaningController : ControllerBase
 {
     private readonly ILogger<CleaningController> _logger;
     private readonly CatScaleContext _dbContext;
-    private readonly DataMapper _mapper = new();
 
     public CleaningController(ILogger<CleaningController> logger, CatScaleContext dbContext)
     {
@@ -36,7 +35,7 @@ public class CleaningController : ControllerBase
             Timestamp = newCleaning.Timestamp.ToUniversalTime(),
             Time = newCleaning.CleaningTime,
             Weight = newCleaning.CleaningWeight,
-            Toilet = toilet,
+            //Toilet = toilet,
         };
         
         await _dbContext.Cleanings.AddAsync(cleaning);

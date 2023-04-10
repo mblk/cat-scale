@@ -8,7 +8,5 @@ public class Toilet
     
     public string Description { get; set; } = null!;
     
-    public List<Measurement> Measurements { get; set; } = null!;
-    
-    public List<Cleaning> Cleanings { get; set; } = null!;
+    public List<ScaleEvent> ScaleEvents { get; set; } = null!;
 }

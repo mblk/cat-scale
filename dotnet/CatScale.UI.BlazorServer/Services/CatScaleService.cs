@@ -1,4 +1,6 @@
+using System.Data;
 using CatScale.Service.Model.Cat;
+using CatScale.Service.Model.ScaleEvent;
 using CatScale.Service.Model.Toilet;
 using CatScale.Service.Model.User;
 
@@ -11,6 +13,10 @@ public interface ICatScaleService // TODO split up
     
     Task<CatDto[]> GetCatsList();
     Task<CatDto> GetCatDetails(int id, CatDetails details);
+
+    Task<ScaleEventDto[]> GetScaleEvents();
+
+    string GetScaleEventGraphUri(Uri sourceUri, int id);
 
     Task<string?> Test();
 
@@ -82,6 +88,29 @@ public class CatScaleService : ICatScaleService
         return cat;
     }
 
+    public async Task<ScaleEventDto[]> GetScaleEvents()
+    {
+        var response = await _httpClient.GetAsync($"api/ScaleEvent/GetAll");
+        response.EnsureSuccessStatusCode();
+
+        var scaleEvents = await response.Content.ReadFromJsonAsync<ScaleEventDto[]>();
+        if (scaleEvents is null) throw new Exception("kaputt");
+
+        return scaleEvents;
+    }
+
+    public string GetScaleEventGraphUri(Uri sourceUri, int id)
+    {
+        Console.WriteLine($"GetScaleEventGraphUri source={sourceUri} base={_httpClient.BaseAddress} id={id}");
+
+        var host = sourceUri.Host;
+        var port = _httpClient.BaseAddress?.Port ?? 5000;
+        var scheme = _httpClient.BaseAddress?.Scheme ?? "http";
+
+        var s = $"{scheme}://{host}:{port}/api/Graph/GetScaleEvent?scaleEventId={id}";
+        return s;
+    }
+    
     public async Task<UserApiKeyDto[]> GetApiKeys()
     {
         var response = await _httpClient.GetAsync("api/User/GetApiKeys");

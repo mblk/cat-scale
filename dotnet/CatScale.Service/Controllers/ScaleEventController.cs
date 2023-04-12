@@ -55,8 +55,10 @@ public class ScaleEventController : ControllerBase
 
         await _dbContext.ScaleEvents.AddAsync(scaleEvent);
         await _dbContext.SaveChangesAsync();
+
+        var scaleEventDto = DataMapper.MapScaleEvent(scaleEvent);
         
-        return CreatedAtAction(nameof(Create), new { Id = scaleEvent.Id }, scaleEvent);
+        return CreatedAtAction(nameof(Create), new { Id = scaleEventDto.Id }, scaleEventDto);
     }
 
     [HttpGet]

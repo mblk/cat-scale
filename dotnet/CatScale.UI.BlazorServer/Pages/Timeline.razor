@@ -1,0 +1,120 @@
+@page "/Timeline"
+@using CatScale.UI.BlazorServer.Services
+@using CatScale.Service.Model.ScaleEvent
+@using CatScale.UI.BlazorServer.Utils
+@inject ICatScaleService CatScaleService
+@inject NavigationManager NavigationManager
+
+<h4>Timeline:</h4>
+
+@if (_scaleEventViewModels is null)
+{
+    <p>Loading ...</p>
+}
+else
+{
+    <div class="accordion" id="accordionExample">
+        
+        @foreach (var vm in _scaleEventViewModels)
+        {
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button ps-1 pt-1 pb-1 @(vm.Expanded ? "show" : "collapsed")" type="button"
+                            @onclick="@(() => { vm.Expanded = !vm.Expanded; })">
+                        
+                        <div class="alert alert-primary m-0 p-2" role="alert">
+                            @TimestampFormatter.Format(vm.ScaleEvent.Start)
+                        </div>
+
+                        <div class="alert alert-warning m-0 p-2 ms-1" role="alert">
+                            Unbekanntes Ereignis
+                        </div>
+
+                    </button>
+                </h2>
+                <div id="collapseThree" class="accordion-collapse collapse @(vm.Expanded ? "show" : "")">
+                    <div class="accordion-body">
+                        <strong>Details:</strong><br />
+                        Start: @TimestampFormatter.Format(vm.ScaleEvent.Start)<br/>
+                        Ende: @TimestampFormatter.Format(vm.ScaleEvent.End)<br/>
+                        Dauer: @((vm.ScaleEvent.End - vm.ScaleEvent.Start).TotalSeconds.ToString("F0"))s<br/>
+                        Messung: @(vm.ScaleEvent.Measurement != null)<br/>
+                        Reinigung: @(vm.ScaleEvent.Cleaning != null)<br/>
+                        <br />
+                        <strong>Stabile Phasen: @vm.ScaleEvent.StablePhases.Length</strong><br/>
+                        <table class="table table-bordered">
+                            <thead>
+                            <tr>
+                                <th scope="col">Ende</th>
+                                <th scope="col">Länge</th>
+                                <th scope="col">Wert</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var sp in vm.ScaleEvent.StablePhases)
+                            {
+                                <tr>
+                                    <td>@sp.Time.DateTime.ToLongTimeString()</td>
+                                    <td>@sp.Length.ToString("F1") s</td>
+                                    <td>@sp.Value.ToString("F1") g</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                        
+                        <img src="@CatScaleService.GetScaleEventGraphUri(_myUri!, vm.ScaleEvent.Id)" style="width: 100%" alt="kaputt"/>
+                        
+                        <br /><br />
+                        <strong>Klassifikation:</strong><br/>
+                        Unbekanntes Ereignis<br />
+                        
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private Uri? _myUri;
+    
+    private ScaleEventDto[]? _scaleEvents;
+
+    private ScaleEventViewModel[]? _scaleEventViewModels;
+
+    internal class ScaleEventViewModel
+    {
+        public ScaleEventDto ScaleEvent { get; }
+        public bool Expanded { get; set; }
+
+        public ScaleEventViewModel(ScaleEventDto scaleEvent)
+        {
+            ScaleEvent = scaleEvent;
+        }
+    }
+
+    private void OpenClose(ScaleEventViewModel vm)
+    {
+        vm.Expanded = !vm.Expanded;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _myUri = new Uri(NavigationManager.Uri);
+        Console.WriteLine($"OnInitializedAsync myUri: {_myUri}");
+        
+        try
+        {
+            _scaleEvents = await CatScaleService.GetScaleEvents();
+
+            _scaleEventViewModels = _scaleEvents
+                .OrderByDescending(x => x.Start)
+                .Select(x => new ScaleEventViewModel(x))
+                .ToArray();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.ToString());
+        }
+    }
+}

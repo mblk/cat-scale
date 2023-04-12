@@ -3,11 +3,9 @@ using System.Globalization;
 using System.Text;
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
-using CatScale.Service.Model.ScaleEvent;
 using InfluxDB.Client;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using NodaTime;
 
 namespace CatScale.Service.Controllers;
 
@@ -18,12 +16,21 @@ public class GraphController : ControllerBase
     private readonly ILogger<GraphController> _logger;
     private readonly CatScaleContext _dbContext;
 
-    public GraphController(ILogger<GraphController> logger, CatScaleContext dbContext)
+    private readonly string _influxUrl;
+    private readonly string _influxToken;
+    private readonly string _influxOrg;
+    private readonly string _influxBucket;
+    
+    public GraphController(ILogger<GraphController> logger, CatScaleContext dbContext, IConfiguration configuration)
     {
         _logger = logger;
         _dbContext = dbContext;
-    }
 
+        _influxUrl = configuration["Influx:Url"] ?? throw new ArgumentException("missing config Influx:Url");
+        _influxToken = configuration["Influx:Token"] ?? throw new ArgumentException("missing config Influx:Token");
+        _influxOrg = configuration["Influx:Org"] ?? throw new ArgumentException("missing config Influx:Org");
+        _influxBucket = configuration["Influx:Bucket"] ?? throw new ArgumentException("missing config Influx:Bucket");
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetScaleEvent(int scaleEventId)
@@ -39,6 +46,9 @@ public class GraphController : ControllerBase
 
         try
         {
+            if (!Directory.Exists("temp"))
+                Directory.CreateDirectory("temp");
+            
             var extraTime = TimeSpan.FromSeconds(30);
             var start = scaleEvent.StartTime - extraTime;
             var end = scaleEvent.EndTime + extraTime;
@@ -166,10 +176,10 @@ public class GraphController : ControllerBase
 
     private async Task<IEnumerable<(DateTime,double)>> GetWeightDataFromInflux(DateTimeOffset start, DateTimeOffset end)
     {
-        const string addr = "http://152.89.94.37:8086";
-        const string token = "aioQHYpnjgKBivH1k2YH9wy5o4vNABWj2x_WDjz2Y59t0g7t-dkRCk04PldsUqVmwCLXQVJ0HliFZwAmyszJ0g==";
-        const string org = "catorg";
-        const string bucket = "catbucket";
+        string addr = _influxUrl;
+        string token = _influxToken;
+        string org = _influxOrg;
+        string bucket = _influxBucket;
         
         using var client = new InfluxDBClient(addr, token);
 

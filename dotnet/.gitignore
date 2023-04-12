@@ -5,6 +5,7 @@
 
 # My extensions
 .idea/
+CatScale.Service/temp/
 
 # User-specific files
 *.rsuser

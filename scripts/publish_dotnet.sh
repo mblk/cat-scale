@@ -16,9 +16,6 @@ dotnet publish ../dotnet/CatScale.UI.BlazorServer/CatScale.UI.BlazorServer.cspro
 echo "compress..."
 cd $PUBLISH_DIR
 
-rm service/appsettings.*
-rm blazorserver/appsettings.*
-
 tar -czf service.tar.gz service/
 tar -czf blazorserver.tar.gz blazorserver/
 

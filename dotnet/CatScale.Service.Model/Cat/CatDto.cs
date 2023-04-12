@@ -10,7 +10,7 @@ public class CatDto
     
     public DateOnly DateOfBirth { get; set; }
 
-    public CatWeightDto[] Weights { get; set; } = null!;
-    
-    public MeasurementDto[] Measurements { get; set; } = null!;
+    public CatWeightDto[] Weights { get; set; } = Array.Empty<CatWeightDto>();
+
+    public MeasurementDto[] Measurements { get; set; } = Array.Empty<MeasurementDto>();
 }

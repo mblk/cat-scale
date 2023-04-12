@@ -10,8 +10,8 @@ public class ToiletDto
     public string Name { get; set; } = null!;
     
     public string Description { get; set; } = null!;
-    
-    public MeasurementDto[] Measurements { get; set; } = null!;
 
-    public CleaningDto[] Cleanings { get; set; } = null!;
+    public MeasurementDto[] Measurements { get; set; } = Array.Empty<MeasurementDto>();
+
+    public CleaningDto[] Cleanings { get; set; } = Array.Empty<CleaningDto>();
 }

@@ -15,7 +15,6 @@ public interface ICatScaleService // TODO split up
     Task<CatDto> GetCatDetails(int id, CatDetails details);
 
     Task<ScaleEventDto[]> GetScaleEvents();
-
     string GetScaleEventGraphUri(Uri sourceUri, int id);
 
     Task<string?> Test();
@@ -101,8 +100,6 @@ public class CatScaleService : ICatScaleService
 
     public string GetScaleEventGraphUri(Uri sourceUri, int id)
     {
-        Console.WriteLine($"GetScaleEventGraphUri source={sourceUri} base={_httpClient.BaseAddress} id={id}");
-
         var host = sourceUri.Host;
         var port = _httpClient.BaseAddress?.Port ?? 5000;
         var scheme = _httpClient.BaseAddress?.Scheme ?? "http";

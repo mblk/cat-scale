@@ -4,7 +4,8 @@ public class ScaleEvent
 {
     public int Id { get; set; }
     
-    public Toilet Toilet { get; set; } = null!;
+    // public Toilet Toilet { get; set; } = null!;
+    public int ToiletId { get; set; }
 
     public DateTimeOffset StartTime { get; set; }
     

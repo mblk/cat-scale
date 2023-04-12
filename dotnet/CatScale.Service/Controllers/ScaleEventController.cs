@@ -40,7 +40,7 @@ public class ScaleEventController : ControllerBase
         
         var scaleEvent = new ScaleEvent()
         {
-            Toilet = toilet,
+            ToiletId = toilet.Id,
             StartTime = newScaleEvent.StartTime.ToUniversalTime(),
             EndTime = newScaleEvent.EndTime.ToUniversalTime(),
             

@@ -32,7 +32,7 @@ public static partial class DataMapper // TODO static extension methods?
         var measurementDto = scaleEvent.Measurement != null ? MapMeasurement(scaleEvent.Measurement) : null;
         var cleaningDto = scaleEvent.Cleaning != null ? MapCleaning(scaleEvent.Cleaning) : null; 
 
-        return new ScaleEventDto(scaleEvent.Id, scaleEvent.StartTime, scaleEvent.EndTime,
+        return new ScaleEventDto(scaleEvent.Id, scaleEvent.ToiletId, scaleEvent.StartTime, scaleEvent.EndTime,
             scaleEvent.StablePhases.Select(MapStablePhase).ToArray(), cleaningDto, measurementDto);
     }
 

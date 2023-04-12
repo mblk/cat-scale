@@ -33,42 +33,46 @@ else
                     </button>
                 </h2>
                 <div id="collapseThree" class="accordion-collapse collapse @(vm.Expanded ? "show" : "")">
-                    <div class="accordion-body">
-                        <strong>Details:</strong><br />
-                        Start: @TimestampFormatter.Format(vm.ScaleEvent.Start)<br/>
-                        Ende: @TimestampFormatter.Format(vm.ScaleEvent.End)<br/>
-                        Dauer: @((vm.ScaleEvent.End - vm.ScaleEvent.Start).TotalSeconds.ToString("F0"))s<br/>
-                        Messung: @(vm.ScaleEvent.Measurement != null)<br/>
-                        Reinigung: @(vm.ScaleEvent.Cleaning != null)<br/>
-                        <br />
-                        <strong>Stabile Phasen: @vm.ScaleEvent.StablePhases.Length</strong><br/>
-                        <table class="table table-bordered">
-                            <thead>
-                            <tr>
-                                <th scope="col">Ende</th>
-                                <th scope="col">Länge</th>
-                                <th scope="col">Wert</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            @foreach (var sp in vm.ScaleEvent.StablePhases)
-                            {
+                    @if (vm.Expanded)
+                    {
+                        <div class="accordion-body">
+                            <strong>Details:</strong><br/>
+                            Start: @TimestampFormatter.Format(vm.ScaleEvent.Start)<br/>
+                            Ende: @TimestampFormatter.Format(vm.ScaleEvent.End)<br/>
+                            Dauer: @((vm.ScaleEvent.End - vm.ScaleEvent.Start).TotalSeconds.ToString("F0"))s<br/>
+                            Katzenklo: @vm.ScaleEvent.ToiletId<br />
+                            Messung: @(vm.ScaleEvent.Measurement != null)<br/>
+                            Reinigung: @(vm.ScaleEvent.Cleaning != null)<br/>
+                            <br/>
+                            <strong>Stabile Phasen: @vm.ScaleEvent.StablePhases.Length</strong><br/>
+                            <table class="table table-bordered">
+                                <thead>
                                 <tr>
-                                    <td>@sp.Time.DateTime.ToLongTimeString()</td>
-                                    <td>@sp.Length.ToString("F1") s</td>
-                                    <td>@sp.Value.ToString("F1") g</td>
+                                    <th scope="col">Ende</th>
+                                    <th scope="col">Länge</th>
+                                    <th scope="col">Wert</th>
                                 </tr>
-                            }
-                            </tbody>
-                        </table>
-                        
-                        <img src="@CatScaleService.GetScaleEventGraphUri(_myUri!, vm.ScaleEvent.Id)" style="width: 100%" alt="kaputt"/>
-                        
-                        <br /><br />
-                        <strong>Klassifikation:</strong><br/>
-                        Unbekanntes Ereignis<br />
-                        
-                    </div>
+                                </thead>
+                                <tbody>
+                                @foreach (var sp in vm.ScaleEvent.StablePhases)
+                                {
+                                    <tr>
+                                        <td>@sp.Time.DateTime.ToLongTimeString()</td>
+                                        <td>@sp.Length.ToString("F1") s</td>
+                                        <td>@sp.Value.ToString("F1") g</td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+
+                            <img src="@CatScaleService.GetScaleEventGraphUri(_myUri!, vm.ScaleEvent.Id)" style="width: 100%" alt="kaputt"/>
+
+                            <br/><br/>
+                            <strong>Klassifikation:</strong><br/>
+                            Unbekanntes Ereignis<br/>
+
+                        </div>
+                    }
                 </div>
             </div>
         }
@@ -100,11 +104,10 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        _myUri = new Uri(NavigationManager.Uri);
-        Console.WriteLine($"OnInitializedAsync myUri: {_myUri}");
-        
         try
         {
+            _myUri = new Uri(NavigationManager.Uri);
+            
             _scaleEvents = await CatScaleService.GetScaleEvents();
 
             _scaleEventViewModels = _scaleEvents

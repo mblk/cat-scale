@@ -6,7 +6,7 @@ public class UserInfo
 
     public string UserName { get; set; } = null!;
 
-    public UserClaim[] ExposedClaims { get; set; } = null!;
+    public UserClaim[] ExposedClaims { get; set; } = Array.Empty<UserClaim>();
 }
 
 public record UserClaim

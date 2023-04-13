@@ -92,7 +92,7 @@ public class GraphController : ControllerBase
         
         var sb = new StringBuilder()
                 // .AppendLine($"set terminal png size 1200,800 font \"Verdana,10\"")
-                .AppendLine($"set terminal svg size 1200,800 font \"Helvetica,16\"")
+                .AppendLine($"set terminal svg size 1200,600 font \"Helvetica,16\"")
 
                 // TODO font?
                 // TODO output as pdf or postscript ?

@@ -117,7 +117,7 @@ static uint64_t get_unix_timestamp_in_ns()
     return timestamp;
 }
 
-static esp_err_t read_fast_data_from_sensors(fast_sensor_data_t *sensor_data)
+static esp_err_t read_fast_data_from_sensors(fast_sensor_data_t *sensor_data, double dt)
 {
     assert(sensor_data);
     memset(sensor_data, 0, sizeof(fast_sensor_data_t));
@@ -134,7 +134,7 @@ static esp_err_t read_fast_data_from_sensors(fast_sensor_data_t *sensor_data)
     }
 
     sensor_data->weight_raw = (double)hx711_data;
-    sensor_data->weight = filter_cascade_process(sensor_data->weight_raw);
+    sensor_data->weight = filter_cascade_process(sensor_data->weight_raw, dt);
 
     return ESP_OK;
 }
@@ -170,6 +170,11 @@ static void sensors_read_task(void *task_args)
 {
     ESP_LOGI(TAG, "sensors_read_task");
     
+    const int64_t target_fast_read_diff = 100 * 1000; // 100ms in µs
+
+    int64_t last_fast_read_time = esp_timer_get_time(); // µs since boot
+    int64_t last_slow_read_time = last_fast_read_time;
+
     while(true)
     {
         // Sampling rates:
@@ -179,28 +184,46 @@ static void sensors_read_task(void *task_args)
 
         for(int i=0; i<10; i++)
         {
-            vTaskDelay(80 / portTICK_PERIOD_MS); // target is 100ms
+            // Try to get fast sensor data exactly each 100ms.
+            double actual_dt = 0;
+            while(1)
+            {
+                const int64_t t_now = esp_timer_get_time();
+                const int64_t t_diff = t_now - last_fast_read_time;
+                const int64_t t_wait = target_fast_read_diff - t_diff;
+
+                if (t_wait <= 0) {
+                    actual_dt = (double)(t_now - last_fast_read_time) / 1e6;
+                    last_fast_read_time = t_now;
+                    break;
+                }
+
+                if (t_wait > (portTICK_PERIOD_MS) * 1100) {
+                    vTaskDelay(t_wait / 1000 / portTICK_PERIOD_MS);
+                } else {
+                    esp_rom_delay_us(t_wait);
+                }
+            }
+
             fast_sensor_data_t fast_data = {};
-            read_fast_data_from_sensors(&fast_data);
+            read_fast_data_from_sensors(&fast_data, actual_dt);
             ringbuffer_push(sensor_ringbuffer_fast_data, &fast_data);
+        }
+
+        if(1) // TODO remove later?
+        {
+            const int64_t t_now = esp_timer_get_time();
+            const int64_t dt_slow = t_now - last_slow_read_time;
+            last_slow_read_time = t_now; 
+            ESP_LOGI(TAG, "dt_slow=%d ms", (int)(dt_slow / 1000));
         }
 
         slow_sensor_data_t slow_data = {};
         read_slow_data_from_sensors(&slow_data);
         ringbuffer_push(sensor_ringbuffer_slow_data, &slow_data);
 
-
-
         // The ccs811 sensor needs to know the external temperature and humidity to perform some corrections.
-        //ccs811_set_environment_data(avg_sensor_data.temperature, avg_sensor_data.humidity);
-
-        //avg_sensor_data.weight = measurement_process_raw_weight(avg_sensor_data.weight_raw);
-        //avg_sensor_data.measurement_state = measurement_process_corrected_weight(avg_sensor_data.weight);
-
-        //sensor_ringbuffer_push(&avg_sensor_data);
-
-        // TODO freq messen und ausgeben?
-        //esp_timer_get_time() // us
+        ccs811_set_environment_data(slow_data.temperature, slow_data.humidity);
     }
 }
 

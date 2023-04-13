@@ -54,7 +54,7 @@ else
                                 </tr>
                                 </thead>
                                 <tbody>
-                                @foreach (var sp in vm.ScaleEvent.StablePhases)
+                                @foreach (var sp in vm.ScaleEvent.StablePhases.OrderBy(x => x.Time))
                                 {
                                     <tr>
                                         <td>@sp.Time.DateTime.ToLongTimeString()</td>

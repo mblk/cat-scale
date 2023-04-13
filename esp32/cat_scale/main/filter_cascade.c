@@ -4,10 +4,6 @@
 #include "filters.h"
 #include "measurement.h"
 
-#ifndef UNIT_TESTING
-#include "sdkconfig.h"
-#endif
-
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -24,13 +20,12 @@ static double g_input_offset = 0;
 static double g_prev_hpf1_offsets[10] = {};
 static double g_input_switch_timer = 0;
 
-static int g_state = 0;
 static double g_stable_time = 0.0;
 static double g_stable_phase_values[1000] = {}; // TODO
 static int g_stable_phase_values_index = 0;
 
-const double sampling_frequency = 10.0;
-const double dxdt_threshold = 50.0;
+static const double sampling_frequency = 10.0;
+static const double dxdt_threshold = 50.0;
 
 void filter_cascade_init(void)
 {
@@ -41,13 +36,11 @@ void filter_cascade_init(void)
     g_dxdt1 = create_differentiator(sampling_frequency);
 }
 
-static void push_stable_value(double value)
+static void push_stable_value(double value, double dt)
 {
-    g_stable_time += 0.1;
+    g_stable_time += dt;
     g_stable_phase_values[g_stable_phase_values_index % 1000] = value;
     g_stable_phase_values_index++;
-
-    g_state = 1;
 }
 
 static void clear_stable_phase(void)
@@ -69,11 +62,9 @@ static void clear_stable_phase(void)
     g_stable_time = 0.0;
     memset(g_stable_phase_values, 0, sizeof(double) * 1000);
     g_stable_phase_values_index = 0;
-
-    g_state = 0;
 }
 
-double filter_cascade_process(double input)
+double filter_cascade_process(double input, double dt)
 {
     assert(g_hpf1);
 
@@ -87,14 +78,14 @@ double filter_cascade_process(double input)
     double output_mean1 = mean_filter(g_mean1, output_lpf1);
     double output_median1 = median_filter(g_median1, output_mean1);
 
-    double output_grams = output_median1 / 23.0; // XXXXX
+    double output_grams = output_median1 / 23.0; // TODO calibration
 
     double output_dxdt1 = differentiate(g_dxdt1, output_grams);
 
 
-    if (fabs(output_dxdt1) < dxdt_threshold)
+    if (fabs(output_dxdt1) < dxdt_threshold) // TODO use stddev instead?
     {
-        push_stable_value(output_grams);
+        push_stable_value(output_grams, dt);
     }
     else
     {
@@ -103,12 +94,11 @@ double filter_cascade_process(double input)
 
 
     // activate switch?
-    if (fabs(output_dxdt1) > dxdt_threshold || output_grams > 1000.0 || output_grams < -400.0)
+    if (fabs(output_dxdt1) > dxdt_threshold || output_grams > 1000.0 || output_grams < -400.0) // TODO does not work when refilling
     {
         if (!g_input_switch)
         {
             measurement_mark_start_of_event();
-            //printf("[%u] START OF EVENT\n", process_value_index);
             g_input_switch = true;
             g_input_offset = g_prev_hpf1_offsets[9]; // TODO mean/median?
         }
@@ -119,11 +109,10 @@ double filter_cascade_process(double input)
     // deactivate switch?
     if (g_input_switch)
     {
-        g_input_switch_timer -= 0.1; // dt
+        g_input_switch_timer -= dt; // dt
         if (g_input_switch_timer <= 0)
         {
             measurement_mark_end_of_event();
-            //printf("[%u] END OF EVENT\n", process_value_index);
             g_input_switch = false;
             g_hpf1->reset = true;
             g_lpf1->reset = true;
@@ -134,18 +123,5 @@ double filter_cascade_process(double input)
     }
 
     return output_grams;
-
-    // fprintf(fd_output, "%u\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
-    //     process_value_index++,  // 1
-    //     input,                  // 2
-    //     output_hpf1,            // 3
-    //     output_lpf1,            // 4
-    //     output_mean1,           // 5
-    //     output_median1,         // 6
-    //     output_grams,           // 7
-    //     output_dxdt1,           // 8
-    //     g_input_switch ? 1000.0 : 2000.0, // 9
-    //     3000.0 + g_state * 1000.0 // 10
-    //     );
 }
 

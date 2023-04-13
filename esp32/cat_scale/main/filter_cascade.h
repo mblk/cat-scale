@@ -2,4 +2,4 @@
 
 void filter_cascade_init(void);
 
-double filter_cascade_process(double input);
+double filter_cascade_process(double input, double dt);

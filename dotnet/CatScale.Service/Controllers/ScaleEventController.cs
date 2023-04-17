@@ -2,6 +2,7 @@ using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using CatScale.Service.Mapper;
 using CatScale.Service.Model.ScaleEvent;
+using CatScale.Service.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,11 +15,13 @@ public class ScaleEventController : ControllerBase
 {
     private readonly ILogger<ScaleEventController> _logger;
     private readonly CatScaleContext _dbContext;
+    private readonly IClassificationService _classificationService;
 
-    public ScaleEventController(ILogger<ScaleEventController> logger, CatScaleContext dbContext)
+    public ScaleEventController(ILogger<ScaleEventController> logger, CatScaleContext dbContext, IClassificationService classificationService)
     {
         _logger = logger;
         _dbContext = dbContext;
+        _classificationService = classificationService;
     }
     
     [Authorize(AuthenticationSchemes = "ApiKey")]
@@ -61,6 +64,42 @@ public class ScaleEventController : ControllerBase
         return CreatedAtAction(nameof(Create), new { Id = scaleEventDto.Id }, scaleEventDto);
     }
 
+    [Authorize(Roles = ApplicationRoles.Admin)]
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        _logger.LogInformation($"Deleting scale event {id}");
+        
+        var scaleEvent = await _dbContext.ScaleEvents.SingleOrDefaultAsync(x => x.Id == id);
+        if (scaleEvent is null)
+            return NotFound();
+
+        _dbContext.ScaleEvents.Remove(scaleEvent);
+        await _dbContext.SaveChangesAsync();
+
+        return Ok();
+    }
+
+    [Authorize(Roles = ApplicationRoles.Admin)]
+    [HttpPost("{id:int}")]
+    public async Task<IActionResult> Classify(int id)
+    {
+        _logger.LogInformation($"Classifying scale event {id}");
+        
+        var scaleEvent = await _dbContext.ScaleEvents
+            .Include(x => x.StablePhases)
+            .Include(x => x.Cleaning)
+            .Include(x => x.Measurement)
+            .SingleOrDefaultAsync(x => x.Id == id);
+        if (scaleEvent is null)
+            return NotFound();
+
+        // XXX
+        await _classificationService.ClassifyScaleEvent(scaleEvent);
+
+        return Ok();
+    }
+    
     [HttpGet]
     public ActionResult<IEnumerable<ScaleEventDto>> GetAll(int? toiletId)
     {

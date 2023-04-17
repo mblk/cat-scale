@@ -16,6 +16,8 @@ public interface ICatScaleService // TODO split up
 
     Task<ScaleEventDto[]> GetScaleEvents();
     string GetScaleEventGraphUri(Uri sourceUri, int id);
+    Task DeleteScaleEvent(int id);
+    Task ClassifyScaleEvent(int id);
 
     Task<string?> Test();
 
@@ -106,6 +108,18 @@ public class CatScaleService : ICatScaleService
 
         var s = $"{scheme}://{host}:{port}/api/Graph/GetScaleEvent?scaleEventId={id}";
         return s;
+    }
+
+    public async Task DeleteScaleEvent(int id)
+    {
+        var response = await _httpClient.DeleteAsync($"api/ScaleEvent/Delete/{id}");
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task ClassifyScaleEvent(int id)
+    {
+        var response = await _httpClient.PostAsync($"api/ScaleEvent/Classify/{id}", null);
+        response.EnsureSuccessStatusCode();
     }
     
     public async Task<UserApiKeyDto[]> GetApiKeys()

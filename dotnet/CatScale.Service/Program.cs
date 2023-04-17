@@ -73,6 +73,8 @@ builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddScoped<IClassificationService, ClassificationService>();
+
 var app = builder.Build();
 
 var configEnableMigration = app.Configuration.GetValue<bool>("Database:EnableMigration");

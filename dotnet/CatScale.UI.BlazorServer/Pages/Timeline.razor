@@ -27,7 +27,7 @@ else
                         </div>
 
                         <div class="alert alert-warning m-0 p-2 ms-1" role="alert">
-                            Unbekanntes Ereignis
+                            Unbekanntes Ereignis (@((vm.ScaleEvent.End - vm.ScaleEvent.Start).TotalSeconds.ToString("F0"))s, @vm.ScaleEvent.StablePhases.Length)
                         </div>
 
                     </button>
@@ -70,7 +70,16 @@ else
                             <br/><br/>
                             <strong>Klassifikation:</strong><br/>
                             Unbekanntes Ereignis<br/>
-
+                            
+                            <AuthorizeView>
+                                <Authorized>
+                                    <br />
+                                    <div class="btn-group">
+                                        <button class="btn btn-primary" @onclick="@(() => Classify(vm))">Klassifizieren</button>
+                                        <button class="btn btn-danger" @onclick="@(() => Delete(vm))">Löschen</button>
+                                    </div>
+                                </Authorized>
+                            </AuthorizeView>
                         </div>
                     }
                 </div>
@@ -97,15 +106,33 @@ else
         }
     }
 
-    private void OpenClose(ScaleEventViewModel vm)
+    private async Task Delete(ScaleEventViewModel vm)
     {
-        vm.Expanded = !vm.Expanded;
+        await CatScaleService.DeleteScaleEvent(vm.ScaleEvent.Id);
+        await LoadData();
+    }
+    
+    private async Task Classify(ScaleEventViewModel vm)
+    {
+        await CatScaleService.ClassifyScaleEvent(vm.ScaleEvent.Id);
+        await LoadData();
     }
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
         try
         {
+            _myUri = null;
+            _scaleEvents = null;
+            _scaleEventViewModels = null;
+
+            await InvokeAsync(StateHasChanged);
+            
             _myUri = new Uri(NavigationManager.Uri);
             
             _scaleEvents = await CatScaleService.GetScaleEvents();
@@ -114,6 +141,8 @@ else
                 .OrderByDescending(x => x.Start)
                 .Select(x => new ScaleEventViewModel(x))
                 .ToArray();
+            
+            await InvokeAsync(StateHasChanged);
         }
         catch (Exception e)
         {

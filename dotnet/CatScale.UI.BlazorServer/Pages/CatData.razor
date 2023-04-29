@@ -2,11 +2,12 @@
 @using CatScale.UI.BlazorServer.Utils
 @using CatScale.UI.BlazorServer.Services
 @using CatScale.Service.Model.Cat
+@using CatScale.Service.Model.Measurement
 @inject ICatScaleService CatScaleService
 
 <h3>Cat</h3>
 
-@if (_cat is null)
+@if (_cat is null || _weights is null || _measurements is null)
 {
     <p>Loading ...</p>
 }
@@ -27,7 +28,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var weight in _cat.Weights.OrderByDescending(w => w.Timestamp))
+            @foreach (var weight in _weights.OrderByDescending(w => w.Timestamp))
             {
                 <tr>
                     <td>@weight.Id</td>
@@ -52,7 +53,7 @@ else
         </tr>
         </thead>
         <tbody>
-        @foreach (var measurement in _cat.Measurements.OrderByDescending(m => m.Timestamp))
+        @foreach (var measurement in _measurements.OrderByDescending(m => m.Timestamp))
         {
             <tr>
                 <td>@measurement.Id</td>
@@ -73,12 +74,16 @@ else
     public int Id { get; set; }
     
     private CatDto? _cat;
+    private CatWeightDto[]? _weights;
+    private MeasurementDto[]? _measurements;
     
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _cat = await CatScaleService.GetCatDetails(Id, CatDetails.All);
+            _cat = await CatScaleService.GetCat(Id);
+            _weights = await CatScaleService.GetCatWeights(Id);
+            _measurements = await CatScaleService.GetCatMeasurements(Id);
         }
         catch (Exception e)
         {

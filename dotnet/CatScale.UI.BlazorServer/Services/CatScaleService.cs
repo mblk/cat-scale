@@ -1,5 +1,6 @@
-using System.Data;
+using System.Text.Json;
 using CatScale.Service.Model.Cat;
+using CatScale.Service.Model.Measurement;
 using CatScale.Service.Model.ScaleEvent;
 using CatScale.Service.Model.Toilet;
 using CatScale.Service.Model.User;
@@ -8,27 +9,52 @@ namespace CatScale.UI.BlazorServer.Services;
 
 public interface ICatScaleService // TODO split up
 {
+    //
+    // Toilet
+    //
+
     Task<ToiletDto[]> GetToiletsList();
-    Task<ToiletDto> GetToiletDetails(int id, ToiletDetails details);
-    
-    Task<CatDto[]> GetCatsList();
-    Task<CatDto> GetCatDetails(int id, CatDetails details);
+    Task<ToiletDto> GetToiletDetails(int id);
+
+    //
+    // Cat
+    //
+
+    Task<CatDto[]> GetAllCats();
+    Task<CatDto> GetCat(int id);
+    Task<CatDto> CreateCat(string name, DateOnly dateOfBirth);
+    Task<CatDto> UpdateCat(int id, string name, DateOnly dateOfBirth);
+    Task DeleteCat(int id);
+
+    Task<CatWeightDto[]> GetCatWeights(int catId);
+    Task<MeasurementDto[]> GetCatMeasurements(int catId);
+
+    //
+    // ScaleEvents
+    //
 
     Task<ScaleEventDto[]> GetScaleEvents();
     string GetScaleEventGraphUri(Uri sourceUri, int id);
     Task DeleteScaleEvent(int id);
     Task ClassifyScaleEvent(int id);
+    Task ClassifyAllScaleEvents();
+    Task DeleteAllScaleEventClassifications();
 
-    Task<string?> Test();
+    //
+    // ApiKeys
+    //
 
     Task<UserApiKeyDto[]> GetApiKeys();
     Task<UserApiKeyDto> CreateApiKey(DateTime? expirationDate);
     Task DeleteApiKey(int apiKeyId);
 
+    //
+    // User
+    //
+
     Task<ApplicationUserDto> GetUserData();
     Task ChangeUserPassword(string oldPassword, string newPassword);
     Task DeleteUser(string password);
-
 }
 
 public class CatScaleService : ICatScaleService
@@ -39,66 +65,71 @@ public class CatScaleService : ICatScaleService
     {
         _httpClient = httpClient;
     }
-    
-    public async Task<string?> Test()
-    {
-        return await _httpClient.GetStringAsync("api/Authentication/Test");   
-    }
+
+    //
+    // Toilet
+    //
 
     public async Task<ToiletDto[]> GetToiletsList()
+        => await _httpClient.GetFromJsonAsync<ToiletDto[]>("api/Toilet/GetAll") ??
+           throw new JsonException("Failed to deserialize response");
+
+
+    public async Task<ToiletDto> GetToiletDetails(int id)
+        => await _httpClient.GetFromJsonAsync<ToiletDto>($"api/Toilet/GetOne/{id}") ??
+           throw new JsonException("Failed to deserialize response");
+
+    //
+    // Cat
+    //
+
+    public async Task<CatDto[]> GetAllCats()
+        => await _httpClient.GetFromJsonAsync<CatDto[]>("api/Cat/GetAll") ??
+           throw new JsonException("Failed to deserialize response");
+
+    public async Task<CatDto> GetCat(int id)
+        => await _httpClient.GetFromJsonAsync<CatDto>($"api/Cat/GetOne/{id}") ??
+           throw new JsonException("Failed to deserialize response");
+
+    public async Task<CatDto> CreateCat(string name, DateOnly dateOfBirth)
     {
-        var response = await _httpClient.GetAsync("api/Toilet/GetAll");
-        response.EnsureSuccessStatusCode();
-    
-        var toilets = await response.Content.ReadFromJsonAsync<ToiletDto[]>();
-        if (toilets is null) throw new Exception("kaputt");
-    
-        return toilets;
+        var response = (await _httpClient.PutAsJsonAsync("api/Cat/Create", 
+                new CreateCatRequest(name, dateOfBirth)))
+            .EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<CatDto>() ??
+               throw new JsonException("Failed to deserialize response");
     }
-    
-    public async Task<ToiletDto> GetToiletDetails(int id, ToiletDetails details)
+
+    public async Task<CatDto> UpdateCat(int id, string name, DateOnly dateOfBirth)
     {
-        var response = await _httpClient.GetAsync($"api/Toilet/GetOne/{id}?details={details}");
-        response.EnsureSuccessStatusCode();
-        
-        var toilet = await response.Content.ReadFromJsonAsync<ToiletDto>();
-        if (toilet is null) throw new Exception("kaputt");
-    
-        return toilet;
+        var response = (await _httpClient.PostAsJsonAsync($"api/Cat/Update/{id}", 
+                new UpdateCatRequest(name, dateOfBirth)))
+            .EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<CatDto>() ??
+               throw new JsonException("Failed to deserialize response");
     }
-    
-    public async Task<CatDto[]> GetCatsList()
-    {
-        var response = await _httpClient.GetAsync("api/Cat/GetAll");
-        response.EnsureSuccessStatusCode();
-    
-        var cats = await response.Content.ReadFromJsonAsync<CatDto[]>();
-        if (cats is null) throw new Exception("kaputt");
-    
-        return cats;
-    }
-    
-    public async Task<CatDto> GetCatDetails(int id, CatDetails details)
-    {
-        var response = await _httpClient.GetAsync($"api/Cat/GetOne/{id}?details={details}");
-        response.EnsureSuccessStatusCode();
-        
-        var cat = await response.Content.ReadFromJsonAsync<CatDto>();
-        if (cat is null) throw new Exception("kaputt");
-    
-        return cat;
-    }
+
+    public async Task DeleteCat(int id)
+        => (await _httpClient.DeleteAsync($"api/Cat/Delete/{id}"))
+            .EnsureSuccessStatusCode();
+
+    public async Task<CatWeightDto[]> GetCatWeights(int catId)
+        => await _httpClient.GetFromJsonAsync<CatWeightDto[]>($"api/CatWeight/GetAll/{catId}") ??
+           throw new JsonException("Failed to deserialize response");
+
+    public async Task<MeasurementDto[]> GetCatMeasurements(int catId)
+        => await _httpClient.GetFromJsonAsync<MeasurementDto[]>($"api/Measurement/GetAll/{catId}") ??
+           throw new JsonException("Failed to deserialize response");
+
+    //
+    // ScaleEvents
+    //
 
     public async Task<ScaleEventDto[]> GetScaleEvents()
-    {
-        var response = await _httpClient.GetAsync($"api/ScaleEvent/GetAll");
-        response.EnsureSuccessStatusCode();
-
-        var scaleEvents = await response.Content.ReadFromJsonAsync<ScaleEventDto[]>();
-        if (scaleEvents is null) throw new Exception("kaputt");
-
-        return scaleEvents;
-    }
+        => await _httpClient.GetFromJsonAsync<ScaleEventDto[]>($"api/ScaleEvent/GetAll") ??
+           throw new JsonException("Failed to deserialize response");
 
     public string GetScaleEventGraphUri(Uri sourceUri, int id)
     {
@@ -111,66 +142,57 @@ public class CatScaleService : ICatScaleService
     }
 
     public async Task DeleteScaleEvent(int id)
-    {
-        var response = await _httpClient.DeleteAsync($"api/ScaleEvent/Delete/{id}");
-        response.EnsureSuccessStatusCode();
-    }
+        => (await _httpClient.DeleteAsync($"api/ScaleEvent/Delete/{id}"))
+            .EnsureSuccessStatusCode();
 
     public async Task ClassifyScaleEvent(int id)
-    {
-        var response = await _httpClient.PostAsync($"api/ScaleEvent/Classify/{id}", null);
-        response.EnsureSuccessStatusCode();
-    }
-    
+        => (await _httpClient.PostAsync($"api/ScaleEvent/Classify/{id}", null))
+            .EnsureSuccessStatusCode();
+
+    public async Task ClassifyAllScaleEvents()
+        => (await _httpClient.PostAsync($"api/ScaleEvent/ClassifyAllEvents", null))
+            .EnsureSuccessStatusCode();
+
+    public async Task DeleteAllScaleEventClassifications()
+        => (await _httpClient.PostAsync($"api/ScaleEvent/DeleteAllClassifications", null))
+            .EnsureSuccessStatusCode();
+
+    //
+    // ApiKeys
+    //
+
     public async Task<UserApiKeyDto[]> GetApiKeys()
-    {
-        var response = await _httpClient.GetAsync("api/User/GetApiKeys");
-        response.EnsureSuccessStatusCode();
-    
-        var apiKeys = await response.Content.ReadFromJsonAsync<UserApiKeyDto[]>();
-        if (apiKeys is null) throw new Exception("kaputt");
-    
-        return apiKeys;
-    }
+        => await _httpClient.GetFromJsonAsync<UserApiKeyDto[]>("api/User/GetApiKeys") ??
+           throw new JsonException("Failed to deserialize response");
 
     public async Task<UserApiKeyDto> CreateApiKey(DateTime? expirationDate)
     {
-        var request = new CreateApiKeyRequest(expirationDate);
+        var response = (await _httpClient.PostAsJsonAsync("api/User/CreateApiKey", 
+                new CreateApiKeyRequest(expirationDate)))
+            .EnsureSuccessStatusCode();
 
-        var response = await _httpClient.PostAsJsonAsync("api/User/CreateApiKey", request);
-        response.EnsureSuccessStatusCode();
-
-        var apiKey = await response.Content.ReadFromJsonAsync<UserApiKeyDto>();
-        if (apiKey is null) throw new Exception("kaputt");
-
-        return apiKey;
+        return await response.Content.ReadFromJsonAsync<UserApiKeyDto>() ??
+               throw new JsonException("Failed to deserialize response");
     }
 
     public async Task DeleteApiKey(int apiKeyId)
-    {
-        var response = await _httpClient.DeleteAsync($"api/User/DeleteApiKey/{apiKeyId}");
-        response.EnsureSuccessStatusCode();
-    }
+        => (await _httpClient.DeleteAsync($"api/User/DeleteApiKey/{apiKeyId}"))
+            .EnsureSuccessStatusCode();
+
+    //
+    // User
+    //
 
     public async Task<ApplicationUserDto> GetUserData()
-    {
-        var userData = await _httpClient.GetFromJsonAsync<ApplicationUserDto>("api/User/Get");
-        if (userData is null) throw new Exception("kaputt");
-        return userData;
-    }
+        => await _httpClient.GetFromJsonAsync<ApplicationUserDto>("api/User/Get") ??
+           throw new JsonException("Failed to deserialize response");
 
     public async Task ChangeUserPassword(string oldPassword, string newPassword)
-    {
-        var request = new ChangePasswordRequest(oldPassword, newPassword);
-        var response = await _httpClient.PostAsJsonAsync("api/User/ChangePassword", request);
-        response.EnsureSuccessStatusCode();
-    }
+        => (await _httpClient.PostAsJsonAsync("api/User/ChangePassword", 
+                new ChangePasswordRequest(oldPassword, newPassword)))
+            .EnsureSuccessStatusCode();
 
     public async Task DeleteUser(string password)
-    {
-        var request = new DeleteUserRequest(password);
-
-        var response = await _httpClient.PostAsJsonAsync("api/User/DeleteUser", request);
-        response.EnsureSuccessStatusCode();
-    }
+        => (await _httpClient.PostAsJsonAsync("api/User/DeleteUser", new DeleteUserRequest(password)))
+            .EnsureSuccessStatusCode();
 }

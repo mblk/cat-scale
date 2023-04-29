@@ -1,5 +1,8 @@
+using JetBrains.Annotations;
+
 namespace CatScale.Service.Model.Cleaning;
 
+[PublicAPI]
 public class CleaningDto
 {
     public int Id { get; set; }

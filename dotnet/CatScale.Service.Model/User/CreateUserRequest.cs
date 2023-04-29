@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using JetBrains.Annotations;
 
 namespace CatScale.Service.Model.User;
 
+[PublicAPI]
 public class CreateUserRequest
 {
     [Required(AllowEmptyStrings = false)]

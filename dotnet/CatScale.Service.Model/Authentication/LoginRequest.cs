@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using JetBrains.Annotations;
 
 namespace CatScale.Service.Model.Authentication;
 
+[PublicAPI]
 public class LoginRequest
 {
     [Required(AllowEmptyStrings = false)]

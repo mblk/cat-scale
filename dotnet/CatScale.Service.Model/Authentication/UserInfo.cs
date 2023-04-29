@@ -1,5 +1,8 @@
+using JetBrains.Annotations;
+
 namespace CatScale.Service.Model.Authentication;
 
+[PublicAPI]
 public class UserInfo
 {
     public bool IsAuthenticated { get; set; }
@@ -9,6 +12,7 @@ public class UserInfo
     public UserClaim[] ExposedClaims { get; set; } = Array.Empty<UserClaim>();
 }
 
+[PublicAPI]
 public record UserClaim
 (
     string Type,

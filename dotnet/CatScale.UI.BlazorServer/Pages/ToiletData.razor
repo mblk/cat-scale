@@ -17,57 +17,32 @@ else
     <p>Name: @_toilet.Name</p>
     <p>Description: @_toilet.Description</p>
 
-    <p>Cleanings:</p>
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Id</th>
-            <th>Timestamp</th>
-            <th>Time</th>
-            <th>Weight</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var cleaning in _toilet.Cleanings.OrderByDescending(c => c.Timestamp))
-        {
-            <tr>
-                <td>@cleaning.Id</td>
-                <td>@TimestampFormatter.Format(cleaning.Timestamp)</td>
-                <td>@cleaning.Time s</td>
-                <td>@cleaning.Weight g</td>
-            </tr>
-        }
-        </tbody>
-    </table>
-
-    <p>Measurements:</p>
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Id</th>
-            <th>Timestamp</th>
-            <th>Setup</th>
-            <th>Poo</th>
-            <th>Cleanup</th>
-            <th>Cat</th>
-            <th>Poo</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var measurement in _toilet.Measurements.OrderByDescending(m => m.Timestamp))
-        {
-            <tr>
-                <td>@measurement.Id</td>
-                <td>@TimestampFormatter.Format(measurement.Timestamp)</td>
-                <td>@measurement.SetupTime s</td>
-                <td>@measurement.PooTime s</td>
-                <td>@measurement.CleanupTime s</td>
-                <td>@measurement.CatWeight g</td>
-                <td>@measurement.PooWeight g</td>
-            </tr>
-        }
-        </tbody>
-    </table>
+    @* <p>Events:</p> *@
+    @* <table class="table"> *@
+    @*     <thead> *@
+    @*     <tr> *@
+    @*         <th>Id</th> *@
+    @*         <th>Start</th> *@
+    @*         <th>End</th> *@
+    @*         <th>Stable phases</th> *@
+    @*         <th>Cleaning</th> *@
+    @*         <th>Measurement</th> *@
+    @*     </tr> *@
+    @*     </thead> *@
+    @*     <tbody> *@
+    @*     @foreach (var e in _toilet.ScaleEvents.OrderByDescending(c => c.Start)) *@
+    @*     { *@
+    @*         <tr> *@
+    @*             <td>@e.Id</td> *@
+    @*             <td>@TimestampFormatter.Format(e.Start)</td> *@
+    @*             <td>@TimestampFormatter.Format(e.End)</td> *@
+    @*             <td>@(e.StablePhases?.Length ?? -1)</td> *@
+    @*             <td>@(e.Cleaning!=null)</td> *@
+    @*             <td>@(e.Measurement!=null)</td> *@
+    @*         </tr> *@
+    @*     } *@
+    @*     </tbody> *@
+    @* </table> *@
 }
 
 @code {
@@ -80,8 +55,7 @@ else
     {
         try
         {
-            Debug.WriteLine("ToiletData OnInitializedAsync");
-            _toilet = await CatScaleService.GetToiletDetails(Id, ToiletDetails.All);
+            _toilet = await CatScaleService.GetToiletDetails(Id);
         }
         catch (Exception e)
         {

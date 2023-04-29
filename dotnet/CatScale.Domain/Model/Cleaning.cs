@@ -12,4 +12,8 @@ public class Cleaning
     public double Time { get; set; }
     
     public double Weight { get; set; }
+    
+    // TODO:
+    // - WeightRemoved
+    // - WeightAdded ?
 }

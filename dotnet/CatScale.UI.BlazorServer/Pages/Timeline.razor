@@ -2,19 +2,28 @@
 @using CatScale.UI.BlazorServer.Services
 @using CatScale.Service.Model.ScaleEvent
 @using CatScale.UI.BlazorServer.Utils
+@using CatScale.Service.Model.Cat
 @inject ICatScaleService CatScaleService
 @inject NavigationManager NavigationManager
 
 <h4>Timeline:</h4>
 
-@if (_scaleEventViewModels is null)
+@if (_scaleEventViewModels is null || _cats is null)
 {
     <p>Loading ...</p>
 }
 else
 {
-    <div class="accordion" id="accordionExample">
-        
+    <AuthorizeView>
+        <Authorized>
+            <button class="btn btn-sm btn-danger" @onclick="@DeleteAllClassifications">Alle Klassifikationen löschen</button>
+            <button class="btn btn-sm btn-danger" @onclick="@ClassifyAllScaleEvents">Alle Ereignisse neu klassifizieren</button>
+            <br />
+            <br />
+        </Authorized>
+    </AuthorizeView>
+    
+    <div class="accordion">
         @foreach (var vm in _scaleEventViewModels)
         {
             <div class="accordion-item">
@@ -26,13 +35,38 @@ else
                             @TimestampFormatter.Format(vm.ScaleEvent.Start)
                         </div>
 
-                        <div class="alert alert-warning m-0 p-2 ms-1" role="alert">
-                            Unbekanntes Ereignis (@((vm.ScaleEvent.End - vm.ScaleEvent.Start).TotalSeconds.ToString("F0"))s, @vm.ScaleEvent.StablePhases.Length)
-                        </div>
-
+                        @{
+                            var unknown = true;
+                            if (vm.ScaleEvent.Cleaning != null)
+                            {
+                                unknown = false;
+                                <div class="alert alert-info m-0 p-2 ms-1" role="alert">
+                                    Reinigung
+                                    (@vm.ScaleEvent.Cleaning.Time.ToString("F0")s,
+                                    @vm.ScaleEvent.Cleaning.Weight.ToString("F0")g)
+                                </div>
+                            }
+                            if (vm.ScaleEvent.Measurement != null)
+                            {
+                                unknown = false;
+                                <div class="alert alert-success m-0 p-2 ms-1" role="alert">
+                                    Messung
+                                    (@_cats.Single(c => c.Id == vm.ScaleEvent.Measurement.CatId).Name,
+                                    @vm.ScaleEvent.Measurement.CatWeight.ToString("F0")g)
+                                </div>
+                            }
+                            if (unknown)
+                            {
+                                <div class="alert alert-warning m-0 p-2 ms-1" role="alert">
+                                    Unbekanntes Ereignis
+                                    (@((vm.ScaleEvent.End - vm.ScaleEvent.Start).TotalSeconds.ToString("F0"))s,
+                                    @vm.ScaleEvent.StablePhases.Length)
+                                </div>
+                            }
+                        }
                     </button>
                 </h2>
-                <div id="collapseThree" class="accordion-collapse collapse @(vm.Expanded ? "show" : "")">
+                <div class="accordion-collapse collapse @(vm.Expanded ? "show" : "")">
                     @if (vm.Expanded)
                     {
                         <div class="accordion-body">
@@ -41,8 +75,41 @@ else
                             Ende: @TimestampFormatter.Format(vm.ScaleEvent.End)<br/>
                             Dauer: @((vm.ScaleEvent.End - vm.ScaleEvent.Start).TotalSeconds.ToString("F0"))s<br/>
                             Katzenklo: @vm.ScaleEvent.ToiletId<br />
-                            Messung: @(vm.ScaleEvent.Measurement != null)<br/>
-                            Reinigung: @(vm.ScaleEvent.Cleaning != null)<br/>
+                            
+                            @if (vm.ScaleEvent.Cleaning is null)
+                            {
+                                <div>Keine Reinigung</div>
+                            }
+                            else
+                            {
+                                <div class="ms-4">
+                                    <strong>Reinigung</strong>
+                                    (Id: @vm.ScaleEvent.Cleaning.Id)<br/>
+                                    Zeitpunkt: @TimestampFormatter.Format(vm.ScaleEvent.Cleaning.Timestamp)<br/>
+                                    Dauer: @vm.ScaleEvent.Cleaning.Time.ToString("F0")s<br/>
+                                    Gewicht: @vm.ScaleEvent.Cleaning.Weight.ToString("F0")g<br/>
+                                </div>
+                            }
+                            
+                            @if (vm.ScaleEvent.Measurement is null)
+                            {
+                                <div>Keine Messung</div>
+                            }
+                            else
+                            {
+                                <div class="ms-4">
+                                    <strong>Messung</strong>
+                                    (Id: @vm.ScaleEvent.Measurement.Id)<br/>
+                                    Katze: @vm.ScaleEvent.Measurement.CatId<br />
+                                    Zeitpunkt: @TimestampFormatter.Format(vm.ScaleEvent.Measurement.Timestamp)<br/>
+                                    Setup: @vm.ScaleEvent.Measurement.SetupTime.ToString("F0")s<br/>
+                                    Poo: @vm.ScaleEvent.Measurement.PooTime.ToString("F0")s<br/>
+                                    Cleanup: @vm.ScaleEvent.Measurement.CleanupTime.ToString("F0")s<br/>
+                                    Cat: @vm.ScaleEvent.Measurement.CatWeight.ToString("F0")g<br/>
+                                    Poo: @vm.ScaleEvent.Measurement.PooWeight.ToString("F0")g<br/>
+                                </div>
+                            }
+                            
                             <br/>
                             <strong>Stabile Phasen: @vm.ScaleEvent.StablePhases.Length</strong><br/>
                             <table class="table table-bordered">
@@ -65,11 +132,8 @@ else
                                 </tbody>
                             </table>
 
-                            <img src="@CatScaleService.GetScaleEventGraphUri(_myUri!, vm.ScaleEvent.Id)" style="width: 100%" alt="kaputt"/>
-
-                            <br/><br/>
-                            <strong>Klassifikation:</strong><br/>
-                            Unbekanntes Ereignis<br/>
+                            <img src="@CatScaleService.GetScaleEventGraphUri(_myUri!, vm.ScaleEvent.Id)" style="width: 100%" alt="Grafik kann nicht geladen werden"/>
+                            <br/>
                             
                             <AuthorizeView>
                                 <Authorized>
@@ -90,6 +154,8 @@ else
 
 @code {
     private Uri? _myUri;
+
+    private CatDto[]? _cats;
     
     private ScaleEventDto[]? _scaleEvents;
 
@@ -104,6 +170,18 @@ else
         {
             ScaleEvent = scaleEvent;
         }
+    }
+
+    private async Task DeleteAllClassifications()
+    {
+        await CatScaleService.DeleteAllScaleEventClassifications();
+        await LoadData();
+    }
+
+    private async Task ClassifyAllScaleEvents()
+    {
+        await CatScaleService.ClassifyAllScaleEvents();
+        await LoadData();
     }
 
     private async Task Delete(ScaleEventViewModel vm)
@@ -128,12 +206,15 @@ else
         try
         {
             _myUri = null;
+            _cats = null;
             _scaleEvents = null;
             _scaleEventViewModels = null;
 
             await InvokeAsync(StateHasChanged);
             
             _myUri = new Uri(NavigationManager.Uri);
+
+            _cats = await CatScaleService.GetAllCats();
             
             _scaleEvents = await CatScaleService.GetScaleEvents();
 

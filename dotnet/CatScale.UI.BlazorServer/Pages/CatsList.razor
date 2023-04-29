@@ -2,6 +2,7 @@
 @using CatScale.Service.Model.Cat
 @using CatScale.UI.BlazorServer.Services
 @inject ICatScaleService CatScaleService
+@inject NavigationManager NavigationManager
 
 <h3>Cats</h3>
 
@@ -11,6 +12,17 @@
 }
 else
 {
+    <div class="btn-group">
+        <button class="btn btn-secondary" @onclick="@LoadData">Liste aktualisieren</button>
+        <AuthorizeView>
+            <Authorized>
+                <button class="btn btn-primary" @onclick="@CreateCat">Neue Katze anlegen</button>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+    <br/>
+    <br/>
+    
     <table class="table">
         <thead>
         <tr>
@@ -29,7 +41,17 @@ else
                 <td>@cat.Name</td>
                 <td>@cat.DateOfBirth</td>
                 <td>@CalculateAge(cat)</td>
-                <td><a href="cat/@cat.Id">Show data</a></td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-sm btn-primary" @onclick="@(() => Open(cat))">Details</button>
+                        <AuthorizeView>
+                            <Authorized>
+                                <button class="btn btn-sm btn-warning" @onclick="@(() => Edit(cat))">Bearbeiten</button>
+                                <button class="btn btn-sm btn-danger" @onclick="@(() => Delete(cat))">Löschen</button>
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
+                </td>
             </tr>
         }
         </tbody>
@@ -41,9 +63,15 @@ else
     
     protected override async Task OnInitializedAsync()
     {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
         try
         {
-            _cats = await CatScaleService.GetCatsList();
+            _cats = await CatScaleService.GetAllCats();
+            await InvokeAsync(StateHasChanged);
         }
         catch (Exception e)
         {
@@ -51,6 +79,31 @@ else
         }
     }
     
+    private async Task CreateCat()
+    {
+        await CatScaleService.CreateCat($"Testcat-{Random.Shared.Next() % 1000}", new DateOnly(2023, 1, 1));
+        await LoadData();
+    }
+
+    private void Open(CatDto cat)
+    {
+        NavigationManager.NavigateTo($"cat/{cat.Id}");
+    }
+
+    private async Task Edit(CatDto cat)
+    {
+        await CatScaleService.UpdateCat(cat.Id, cat.Name + "x", cat.DateOfBirth.AddDays(1));
+        await LoadData();
+    }
+
+    private async Task Delete(CatDto cat)
+    {
+        await CatScaleService.DeleteCat(cat.Id);
+        await LoadData();
+    }
+    
+    // TODO move to utils?
+    // TODO check if correct
     private static int CalculateAge(CatDto cat)
     {
         var dob = cat.DateOfBirth.ToDateTime(TimeOnly.MinValue);

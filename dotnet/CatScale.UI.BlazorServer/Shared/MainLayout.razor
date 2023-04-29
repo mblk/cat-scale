@@ -12,6 +12,12 @@
     <main>
         <div class="top-row d-flex justify-content-between">
             <PooCounter/>
+            
+            <div>
+                @CultureInfo.CurrentCulture.Name
+                @CultureInfo.CurrentUICulture.Name
+            </div>
+            
             <AuthenticationBox/>
         </div>
 

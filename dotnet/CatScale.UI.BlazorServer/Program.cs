@@ -1,6 +1,8 @@
+using System.Globalization;
 using CatScale.UI.BlazorServer.Services;
 using CatScale.UI.BlazorServer.Services.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,7 +24,18 @@ if (String.IsNullOrWhiteSpace(serviceAddr)) throw new ArgumentException("invalid
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(serviceAddr) });
 
+var supportedCultures = new List<CultureInfo>()
+{
+    new CultureInfo("de-DE"),
+    //new CultureInfo("en"),
+};
 
+builder.Services.Configure<RequestLocalizationOptions>(opt =>
+{
+    opt.DefaultRequestCulture = new RequestCulture("de-DE");
+    opt.SupportedCultures = supportedCultures;
+    opt.SupportedUICultures = supportedCultures;
+});
 
 var app = builder.Build();
 
@@ -40,7 +53,8 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseRequestLocalization("de-DE");
+app.UseRequestLocalization();
+//app.UseRequestLocalization("de-DE");
 
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");

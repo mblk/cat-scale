@@ -4,11 +4,16 @@ using CatScale.Service.DbModel;
 using CatScale.Service.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, lc) =>
+{
+    lc.ReadFrom.Configuration(ctx.Configuration);
+});
 
 builder.Services.AddControllers().AddJsonOptions(opt =>
 {
@@ -124,7 +129,8 @@ if (configPopulateUsers)
     });
 }
 
-// Configure the HTTP request pipeline.
+app.UseSerilogRequestLogging(); // Note: position controls which requests are logged. Move down to reduce.
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

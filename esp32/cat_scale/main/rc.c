@@ -161,6 +161,7 @@ typedef struct {
     const esp_partition_t *ota_update_partition;
 
     uint32_t commands_received;
+    uint32_t commands_parameter;
 
 } process_state_t;
 
@@ -173,6 +174,7 @@ static void process_begin(process_state_t *state)
     state->ota_update_partition = NULL;
 
     state->commands_received = 0;
+    state->commands_parameter = 0;
 }
 
 static void process_data(process_state_t *state, void *data, size_t length)
@@ -229,10 +231,12 @@ static void process_data(process_state_t *state, void *data, size_t length)
                 ESP_LOGI(TAG, "Test start command received");
                 state->commands_received |= RC_COMMAND_TEST_START;
             }
-            else if (strncmp(data, "stable", 6) == 0)
+            else if (strncmp(data, "stable ", 7) == 0)
             {
                 ESP_LOGI(TAG, "Test stable command received");
                 state->commands_received |= RC_COMMAND_TEST_STABLE;
+                state->commands_parameter = (uint32_t)strtol(data+7, NULL, 10);
+                ESP_LOGI(TAG, "Parameter %u", state->commands_parameter);
             }
             else if (strncmp(data, "end", 3) == 0)
             {
@@ -318,7 +322,7 @@ static void process_end(process_state_t *state)
 
     if (state->commands_received & RC_COMMAND_TEST_STABLE)
     {
-        measurement_push_stable_phase(10.0, 3333.0);
+        measurement_push_stable_phase(10.0, (double)state->commands_parameter);
     }
 
     if (state->commands_received & RC_COMMAND_TEST_END)

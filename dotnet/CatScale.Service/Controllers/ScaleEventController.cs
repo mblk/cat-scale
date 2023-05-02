@@ -36,7 +36,7 @@ public class ScaleEventController : ControllerBase
             .AsNoTracking()
             .Include(e => e.StablePhases)
             .Include(e => e.Measurement)
-            .ThenInclude(m => m!.Cat)
+            //.ThenInclude(m => m!.Cat)
             .Include(e => e.Cleaning)
             .ToArrayAsync();
             

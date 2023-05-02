@@ -82,7 +82,7 @@ public class ClassificationService : IClassificationService
             {
                 Timestamp = scaleEvent.StartTime,
                 Time = (scaleEvent.EndTime - scaleEvent.StartTime).TotalSeconds,
-                ScaleEvent = scaleEvent, // Note: If a cleaning already exists for the scale-event, it is somehow automatically deleted by entity-framework.
+                ScaleEventId = scaleEvent.Id, // Note: If a cleaning already exists for the scale-event, it is somehow automatically deleted by entity-framework.
                 Weight = cleaningWeight,
             };
             
@@ -120,13 +120,13 @@ public class ClassificationService : IClassificationService
             scaleEvent.Measurement = new Measurement()
             {
                 Timestamp = scaleEvent.StartTime,
-                ScaleEvent = scaleEvent,
+                ScaleEventId = scaleEvent.Id,
                 SetupTime = setupDuration,
                 PooTime = pooDuration,
                 CleanupTime = cleanupDuration,
                 CatWeight = catWeight,
                 PooWeight = pooWeight,
-                Cat = cat,
+                CatId = cat.Id,
             };
             
             _logger.LogInformation($"Classified scale event as measurement");

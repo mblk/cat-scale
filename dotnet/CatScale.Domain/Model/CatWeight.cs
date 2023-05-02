@@ -4,7 +4,8 @@ public class CatWeight
 {
     public int Id { get; set; }
     
-    public Cat Cat { get; set; } = null!;
+    private int CatId { get; set; }
+    //public Cat Cat { get; set; } = null!;
     
     public DateTimeOffset Timestamp { get; set; }
     

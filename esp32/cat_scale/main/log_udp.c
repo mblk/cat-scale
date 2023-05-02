@@ -93,7 +93,7 @@ static int custom_log_function(const char *format, va_list args)
 
 static void log_publish_task()
 {
-    const char * const target_hostname = CONFIG_CATSCALE_LOG_UDP_HOST;
+    //const char * const target_hostname = CONFIG_CATSCALE_LOG_UDP_HOST;
     const int target_port = CONFIG_CATSCALE_LOG_UDP_PORT;
 
     ESP_LOGI(TAG, "log_publish_task");
@@ -107,18 +107,18 @@ static void log_publish_task()
     while(true)
     {
         // TODO what if the ip of the target host changes later?
-        const struct hostent * const he = gethostbyname(target_hostname);
-        if (!he) {
-            ESP_LOGE(TAG, "gethostbyname(%s) failed", target_hostname);
-            goto try_again_later;
-        }
+        // const struct hostent * const he = gethostbyname(target_hostname);
+        // if (!he) {
+        //     ESP_LOGE(TAG, "gethostbyname(%s) failed", target_hostname);
+        //     goto try_again_later;
+        // }
         
-        const in_addr_t addr = *(in_addr_t*)he->h_addr_list[0];
-        ESP_LOGI(TAG, "resolved '%s' to '%s'", target_hostname, inet_ntoa(addr));
+        // const in_addr_t addr = *(in_addr_t*)he->h_addr_list[0];
+        // ESP_LOGI(TAG, "resolved '%s' to '%s'", target_hostname, inet_ntoa(addr));
 
         struct sockaddr_in dest_addr = {};
-        dest_addr.sin_addr.s_addr = addr;
         dest_addr.sin_family = AF_INET;
+        dest_addr.sin_addr.s_addr = INADDR_BROADCAST; //addr;
         dest_addr.sin_port = htons(target_port);
 
         const int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);

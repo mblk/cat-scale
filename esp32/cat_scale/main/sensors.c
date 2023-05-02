@@ -170,8 +170,6 @@ static void sensors_read_task(void *task_args)
 {
     ESP_LOGI(TAG, "sensors_read_task");
     
-    const int64_t target_fast_read_diff = 100 * 1000; // 100ms in µs
-
     int64_t last_fast_read_time = esp_timer_get_time(); // µs since boot
     int64_t last_slow_read_time = last_fast_read_time;
 
@@ -184,38 +182,23 @@ static void sensors_read_task(void *task_args)
 
         for(int i=0; i<10; i++)
         {
-            // Try to get fast sensor data exactly each 100ms.
-            double actual_dt = 0;
-            while(1)
-            {
-                const int64_t t_now = esp_timer_get_time();
-                const int64_t t_diff = t_now - last_fast_read_time;
-                const int64_t t_wait = target_fast_read_diff - t_diff;
+            vTaskDelay(80 / portTICK_PERIOD_MS);
 
-                if (t_wait <= 0) {
-                    actual_dt = (double)(t_now - last_fast_read_time) / 1e6;
-                    last_fast_read_time = t_now;
-                    break;
-                }
-
-                if (t_wait > (portTICK_PERIOD_MS) * 1100) {
-                    vTaskDelay(t_wait / 1000 / portTICK_PERIOD_MS);
-                } else {
-                    esp_rom_delay_us(t_wait);
-                }
-            }
+            // Get time since last read and pass it down the filter-cascade.
+            const int64_t fast_read_time = esp_timer_get_time();
+            const double fast_read_dt = (double)(fast_read_time - last_fast_read_time) / 1e6;
+            last_fast_read_time = fast_read_time;
 
             fast_sensor_data_t fast_data = {};
-            read_fast_data_from_sensors(&fast_data, actual_dt);
+            read_fast_data_from_sensors(&fast_data, fast_read_dt);
             ringbuffer_push(sensor_ringbuffer_fast_data, &fast_data);
         }
 
-        if(1) // TODO remove later?
         {
-            const int64_t t_now = esp_timer_get_time();
-            const int64_t dt_slow = t_now - last_slow_read_time;
-            last_slow_read_time = t_now; 
-            ESP_LOGI(TAG, "dt_slow=%d ms", (int)(dt_slow / 1000));
+            const int64_t slow_read_time = esp_timer_get_time();
+            const double slow_read_dt = (double)(slow_read_time - last_slow_read_time) / 1e6;
+            last_slow_read_time = slow_read_time;
+            ESP_LOGI(TAG, "slow_read_dt: %0.1fs", slow_read_dt);
         }
 
         slow_sensor_data_t slow_data = {};

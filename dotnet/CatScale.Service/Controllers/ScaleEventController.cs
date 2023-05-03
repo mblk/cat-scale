@@ -36,7 +36,6 @@ public class ScaleEventController : ControllerBase
             .AsNoTracking()
             .Include(e => e.StablePhases)
             .Include(e => e.Measurement)
-            //.ThenInclude(m => m!.Cat)
             .Include(e => e.Cleaning)
             .ToArrayAsync();
             
@@ -46,6 +45,27 @@ public class ScaleEventController : ControllerBase
 
         return Ok(mappedScaleEvents);
     }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<ScaleEventDto>> GetOne(int id)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+        
+        _logger.LogInformation("Get scale event {id}", id);
+        
+        var scaleEvent = await _dbContext.ScaleEvents
+            .AsNoTracking()
+            .Include(e => e.StablePhases)
+            .Include(e => e.Measurement)
+            .Include(e => e.Cleaning)
+            .SingleOrDefaultAsync();
+
+        if (scaleEvent is null)
+            return NotFound();
+
+        return Ok(DataMapper.MapScaleEvent(scaleEvent));
+    }
     
     [Authorize(AuthenticationSchemes = "ApiKey")]
     [HttpPost]
@@ -54,42 +74,52 @@ public class ScaleEventController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
         
-        _logger.LogInformation($"New cat scale event: {newScaleEvent}");
+        _logger.LogInformation("New cat scale event: {newScaleEvent}", newScaleEvent);
         
+        // Check if the event already exists.
+        if (await _dbContext.ScaleEvents.AnyAsync(e =>
+            Math.Abs((e.StartTime - newScaleEvent.StartTime).TotalSeconds) < 1 &&
+            Math.Abs((e.EndTime - newScaleEvent.EndTime).TotalSeconds) < 1))
+        {
+            _logger.LogError("Can't create scale event because it already exists: {newScaleEvent}", newScaleEvent);
+            return Conflict("Scale event already exists");
+        }
+        
+        // Lookup required data.
         var toilet = await _dbContext.Toilets
             .SingleOrDefaultAsync(t => t.Id == newScaleEvent.ToiletId);
         
         if (toilet is null)
             return NotFound($"Toilet does not exist");
         
+        var cats = await _dbContext.Cats
+            .AsNoTracking()
+            .Include(c => c.Weights)
+            .ToArrayAsync();
+        
+        // Create new scale event.
         var scaleEvent = new ScaleEvent()
         {
             ToiletId = toilet.Id,
             StartTime = newScaleEvent.StartTime.ToUniversalTime(),
             EndTime = newScaleEvent.EndTime.ToUniversalTime(),
-            
-            StablePhases = newScaleEvent.StablePhases
-                .Select(x => new StablePhase()
-                {
-                    Timestamp = x.Timestamp.ToUniversalTime(),
-                    Length = x.Length,
-                    Value = x.Value
-                }).ToList(),
+            StablePhases = newScaleEvent.StablePhases.Select(x => new StablePhase()
+            {
+                Timestamp = x.Timestamp.ToUniversalTime(),
+                Length = x.Length,
+                Value = x.Value
+            }).ToList(),
         };
-        
-        var cats = await _dbContext.Cats
-            .AsNoTracking()
-            .Include(c => c.Weights)
-            .ToArrayAsync();
         
         _classificationService.ClassifyScaleEvent(cats, scaleEvent);
 
         await _dbContext.ScaleEvents.AddAsync(scaleEvent);
         await _dbContext.SaveChangesAsync();
 
-        var scaleEventDto = DataMapper.MapScaleEvent(scaleEvent);
-        
-        return CreatedAtAction(nameof(Create), new { Id = scaleEventDto.Id }, scaleEventDto);
+        // Done.
+        return CreatedAtAction(nameof(GetOne), 
+            new { Id = scaleEvent.Id }, 
+            DataMapper.MapScaleEvent(scaleEvent));
     }
 
     [Authorize(Roles = ApplicationRoles.Admin)]
@@ -148,8 +178,6 @@ public class ScaleEventController : ControllerBase
     {
         _logger.LogInformation($"Classifying all scale events");
 
-        await Task.Delay(TimeSpan.FromSeconds(5));
-        
         var cats = await _dbContext.Cats
             .AsNoTracking()
             .Include(c => c.Weights)

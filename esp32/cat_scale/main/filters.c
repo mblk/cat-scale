@@ -2,14 +2,14 @@
 
 #include "filters.h"
 
-#ifndef UNIT_TESTING
 #include "sdkconfig.h"
-#endif
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
+#include <assert.h>
 
 mean_filter_t *create_mean_filter(size_t window_size)
 {

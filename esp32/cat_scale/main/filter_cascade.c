@@ -4,10 +4,13 @@
 #include "filters.h"
 #include "measurement.h"
 
+#include "sdkconfig.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <stdbool.h>
+#include <assert.h>
 
 static high_pass_filter_t *g_hpf1 = NULL;
 static low_pass_filter_t *g_lpf1 = NULL;

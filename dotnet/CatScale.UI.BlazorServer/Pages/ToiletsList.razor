@@ -4,7 +4,7 @@
 @using CatScale.UI.BlazorServer.Services
 @inject ICatScaleService CatScaleService
 
-<h3>Toilets</h3>
+<h3>Toiletten</h3>
 
 @if (_toilets == null)
 {
@@ -17,7 +17,7 @@ else
         <tr>
             <th>Id</th>
             <th>Name</th>
-            <th>Description</th>
+            <th>Beschreibung</th>
             <th></th>
         </tr>
         </thead>
@@ -28,7 +28,7 @@ else
                 <td>@toilet.Id</td>
                 <td>@toilet.Name</td>
                 <td>@toilet.Description</td>
-                <td><a href="toilet/@toilet.Id">Show data</a></td>
+                <td><a href="toilet/@toilet.Id">Details</a></td>
             </tr>
         }
         </tbody>

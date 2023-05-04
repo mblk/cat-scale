@@ -2,67 +2,132 @@
 @using CatScale.UI.BlazorServer.Utils
 @using CatScale.UI.BlazorServer.Services
 @using CatScale.Service.Model.Cat
-@using CatScale.Service.Model.Measurement
 @inject ICatScaleService CatScaleService
 
-<h3>Cat</h3>
+<h3>Katze</h3>
 
-@if (_cat is null || _weights is null || _measurements is null)
+@if (_cat is null || _weights is null)
 {
     <p>Loading ...</p>
 }
 else
 {
-    <p>Id: @_cat.Id</p>
-    <p>Name: @_cat.Name</p>
-    <p>DoB: @_cat.DateOfBirth</p>
-    <p>Age: @CalculateAge(_cat)</p>
+    <hr/>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>Stammdaten:</div>
 
-    <p>Weights:</p>
-    <table class="table">
-        <thead>
+        <AuthorizeView>
+            <Authorized>
+                <div class="btn-group btn-group-sm">
+                    @if (_editMode)
+                    {
+                        <button class="btn btn-sm btn-secondary" @onclick="@DiscardChanges">Verwerfen</button>
+                        <button class="btn btn-sm btn-primary" @onclick="@SaveChanges">Speichern</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-sm btn-primary" @onclick="@Edit">Bearbeiten</button>
+                    }
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+
+    <div class="d-inline-flex w-50">
+        <table class="table table-bordered table-hover m-0 align-middle">
+            <tbody>
             <tr>
-                <th>Id</th>
-                <th>Timestamp</th>
-                <th>Weight</th>
+                <td class="col-3">Id</td>
+                <td class="col-3">@_cat.Id</td>
             </tr>
-        </thead>
-        <tbody>
-            @foreach (var weight in _weights.OrderByDescending(w => w.Timestamp))
-            {
-                <tr>
-                    <td>@weight.Id</td>
-                    <td>@TimestampFormatter.Format(weight.Timestamp)</td>
-                    <td>@weight.Weight g</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+            <tr>
+                <td>Name</td>
+                <td>
+                    @if (_editMode)
+                    {
+                        <input type="text" class="form-control" id="name-input" placeholder="Name" @bind-value="_editName">
+                    }
+                    else
+                    {
+                        @_cat.Name
+                    }
+                </td>
+            </tr>
+            <tr>
+                <td>Rasse</td>
+                <td>asdasd</td>
+            </tr>
+            <tr>
+                <td>Geburtstag</td>
+                <td>
+                    @if (_editMode)
+                    {
+                        <input type="date" class="form-control" id="dob-input" placeholder="Geburtstag" @bind-value="_editDateOfBirth">
+                    }
+                    else
+                    {
+                        @_cat.DateOfBirth
+                    }
+                </td>
+            </tr>
+            <tr>
+                <td>Alter</td>
+                <td>
+                    @if (_editMode)
+                    {
+                        @CalculateAge(_editDateOfBirth)
+                    }
+                    else
+                    {
+                        @CalculateAge(_cat.DateOfBirth)
+                    }
+                </td>
+            </tr>
+            <tr>
+                <td>Bild</td>
+                <td>asdasd</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
 
-    <p>Measurements:</p>
-    <table class="table">
+    <hr/>
+    <p>Gewicht:</p>
+
+    <AuthorizeView>
+        <Authorized>
+            <div class="d-inline-flex">
+                <input type="text" class="form-control" style="width: 100px" id="new-weight-input" placeholder="Gewicht" @bind-value="_newWeightValue">
+                <button class="btn btn-primary" @onclick="@AddWeight">+</button>
+            </div>
+            <br/>
+            <br/>
+        </Authorized>
+    </AuthorizeView>
+
+    <table class="table align-middle">
         <thead>
         <tr>
             <th>Id</th>
-            <th>Timestamp</th>
-            <th>Setup</th>
-            <th>Poo</th>
-            <th>Cleanup</th>
-            <th>Cat</th>
-            <th>Poo</th>
+            <th>Zeitpunkt</th>
+            <th>Gewicht</th>
+            <th></th>
         </tr>
         </thead>
         <tbody>
-        @foreach (var measurement in _measurements.OrderByDescending(m => m.Timestamp))
+        @foreach (var weight in _weights.OrderByDescending(w => w.Timestamp))
         {
             <tr>
-                <td>@measurement.Id</td>
-                <td>@TimestampFormatter.Format(measurement.Timestamp)</td>
-                <td>@measurement.SetupTime s</td>
-                <td>@measurement.PooTime s</td>
-                <td>@measurement.CleanupTime s</td>
-                <td>@measurement.CatWeight g</td>
-                <td>@measurement.PooWeight g</td>
+                <td>@weight.Id</td>
+                <td>@TimestampFormatter.Format(weight.Timestamp)</td>
+                <td>@weight.Weight g</td>
+                <td>
+                    <AuthorizeView>
+                        <Authorized>
+                            <button class="btn btn-sm btn-danger" @onclick="@(() => DeleteWeight(weight))">Löschen</button>
+                        </Authorized>
+                    </AuthorizeView>
+                </td>
             </tr>
         }
         </tbody>
@@ -70,32 +135,87 @@ else
 }
 
 @code {
+
     [Parameter]
     public int Id { get; set; }
-    
+
     private CatDto? _cat;
     private CatWeightDto[]? _weights;
-    private MeasurementDto[]? _measurements;
-    
+
+    private bool _editMode;
+    private string? _editName;
+    private DateOnly _editDateOfBirth;
+
+    private double _newWeightValue;
+
     protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
     {
         try
         {
+            _cat = null;
+            _weights = null;
+            _editMode = false;
+
             _cat = await CatScaleService.GetCat(Id);
             _weights = await CatScaleService.GetCatWeights(Id);
-            _measurements = await CatScaleService.GetCatMeasurements(Id);
         }
         catch (Exception e)
         {
             Console.WriteLine(e.ToString());
         }
     }
-    
-    private static int CalculateAge(CatDto cat)
+
+    private void Edit()
     {
-        var dob = cat.DateOfBirth.ToDateTime(TimeOnly.MinValue);
+        if (_cat is null) return;
+
+        _editMode = true;
+        _editName = _cat.Name;
+        _editDateOfBirth = _cat.DateOfBirth;
+    }
+
+    private async Task SaveChanges()
+    {
+        if (_cat is null ||
+            String.IsNullOrWhiteSpace(_editName) ||
+            _editDateOfBirth < new DateOnly(1950, 1, 1) ||
+            _editDateOfBirth.ToDateTime(TimeOnly.MinValue) > DateTime.Now)
+            return;
+
+        await CatScaleService.UpdateCat(_cat.Id, _editName, _editDateOfBirth);
+        await LoadData();
+    }
+
+    private void DiscardChanges()
+    {
+        _editMode = false;
+    }
+
+    private async Task DeleteWeight(CatWeightDto weight)
+    {
+        await CatScaleService.DeleteCatWeight(weight.Id);
+        await LoadData();
+    }
+
+    private async Task AddWeight()
+    {
+        if (_cat is null) return;
+
+        await CatScaleService.CreateCatWeight(_cat.Id, DateTimeOffset.Now, _newWeightValue);
+        await LoadData();
+    }
+
+    private static int CalculateAge(DateOnly dateOfBirth)
+    {
+        var dob = dateOfBirth.ToDateTime(TimeOnly.MinValue);
         var age = DateTime.Now - dob;
         var years = age.TotalDays / 365;
         return (int)years;
     }
+
 }

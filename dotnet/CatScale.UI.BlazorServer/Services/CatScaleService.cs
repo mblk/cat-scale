@@ -27,6 +27,9 @@ public interface ICatScaleService // TODO split up
     Task DeleteCat(int id);
 
     Task<CatWeightDto[]> GetCatWeights(int catId);
+    Task<CatWeightDto> CreateCatWeight(int catId, DateTimeOffset timestamp, double weight);
+    Task DeleteCatWeight(int catWeightId);
+    
     Task<MeasurementDto[]> GetCatMeasurements(int catId);
 
     //
@@ -34,12 +37,19 @@ public interface ICatScaleService // TODO split up
     //
 
     Task<ScaleEventDto[]> GetScaleEvents();
-    string GetScaleEventGraphUri(Uri sourceUri, int id);
     Task DeleteScaleEvent(int id);
     Task ClassifyScaleEvent(int id);
     Task ClassifyAllScaleEvents();
     Task DeleteAllScaleEventClassifications();
 
+    Task<ScaleEventStats> GetScaleEventStats();
+
+    //
+    // Graphs
+    //
+    string GetScaleEventGraphUri(Uri sourceUri, int id);
+    string GetCatGraphUri(Uri sourceUri, int id);
+    
     //
     // ApiKeys
     //
@@ -119,6 +129,20 @@ public class CatScaleService : ICatScaleService
         => await _httpClient.GetFromJsonAsync<CatWeightDto[]>($"api/CatWeight/GetAll/{catId}") ??
            throw new JsonException("Failed to deserialize response");
 
+    public async Task<CatWeightDto> CreateCatWeight(int catId, DateTimeOffset timestamp, double weight)
+    {
+        var response = (await _httpClient.PostAsJsonAsync("api/CatWeight/Create",
+                new CreateCatWeightRequest(catId, timestamp, weight)))
+            .EnsureSuccessStatusCode();
+        
+        return await response.Content.ReadFromJsonAsync<CatWeightDto>() ??
+               throw new JsonException("Failed to deserialize response");
+    }
+
+    public async Task DeleteCatWeight(int catWeightId)
+        => (await _httpClient.DeleteAsync($"api/CatWeight/Delete/{catWeightId}"))
+            .EnsureSuccessStatusCode();
+    
     public async Task<MeasurementDto[]> GetCatMeasurements(int catId)
         => await _httpClient.GetFromJsonAsync<MeasurementDto[]>($"api/Measurement/GetAll/{catId}") ??
            throw new JsonException("Failed to deserialize response");
@@ -130,16 +154,6 @@ public class CatScaleService : ICatScaleService
     public async Task<ScaleEventDto[]> GetScaleEvents()
         => await _httpClient.GetFromJsonAsync<ScaleEventDto[]>($"api/ScaleEvent/GetAll") ??
            throw new JsonException("Failed to deserialize response");
-
-    public string GetScaleEventGraphUri(Uri sourceUri, int id)
-    {
-        var host = sourceUri.Host;
-        var port = _httpClient.BaseAddress?.Port ?? 5000;
-        var scheme = _httpClient.BaseAddress?.Scheme ?? "http";
-
-        var s = $"{scheme}://{host}:{port}/api/Graph/GetScaleEvent?scaleEventId={id}";
-        return s;
-    }
 
     public async Task DeleteScaleEvent(int id)
         => (await _httpClient.DeleteAsync($"api/ScaleEvent/Delete/{id}"))
@@ -157,6 +171,34 @@ public class CatScaleService : ICatScaleService
         => (await _httpClient.PostAsync($"api/ScaleEvent/DeleteAllClassifications", null))
             .EnsureSuccessStatusCode();
 
+    public async Task<ScaleEventStats> GetScaleEventStats()
+        => await _httpClient.GetFromJsonAsync<ScaleEventStats>("api/ScaleEvent/GetStats") ??
+           throw new JsonException("Failed to deserialize response");
+    
+    //
+    // Graphs
+    //
+    
+    public string GetScaleEventGraphUri(Uri sourceUri, int id)
+    {
+        var host = sourceUri.Host;
+        var port = _httpClient.BaseAddress?.Port ?? 5000;
+        var scheme = _httpClient.BaseAddress?.Scheme ?? "http";
+
+        var s = $"{scheme}://{host}:{port}/api/Graph/GetScaleEvent?scaleEventId={id}";
+        return s;
+    }
+
+    public string GetCatGraphUri(Uri sourceUri, int id)
+    {
+        var host = sourceUri.Host;
+        var port = _httpClient.BaseAddress?.Port ?? 5000;
+        var scheme = _httpClient.BaseAddress?.Scheme ?? "http";
+
+        var s = $"{scheme}://{host}:{port}/api/Graph/GetCatMeasurements?catId={id}";
+        return s;
+    }
+    
     //
     // ApiKeys
     //

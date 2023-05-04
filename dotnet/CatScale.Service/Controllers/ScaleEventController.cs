@@ -211,4 +211,53 @@ public class ScaleEventController : ControllerBase
         
         return Ok();
     }
+
+    [HttpGet]
+    public async Task<ActionResult<ScaleEventStats>> GetStats()
+    {
+        // TODO use client timezone
+        var tzi = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
+       
+        var today = new DateTimeOffset(DateTime.UtcNow.Date);
+
+        today = tzi.IsDaylightSavingTime(today)
+            ? today.Add(-tzi.BaseUtcOffset).AddHours(-1)
+            : today.Add(-tzi.BaseUtcOffset);
+        
+        var yesterday = today.AddDays(-1);
+
+        var numScaleEventsToday = await _dbContext.ScaleEvents
+            .Where(e => e.StartTime >= today)
+            .CountAsync();
+        var numScaleEventsYesterday = await _dbContext.ScaleEvents
+            .Where(e => e.StartTime >= yesterday && e.StartTime < today)
+            .CountAsync();
+        var numScaleEvents = await _dbContext.ScaleEvents.CountAsync();
+        
+        var numCleaningToday = await _dbContext.Cleanings
+            .Where(c => c.Timestamp >= today)
+            .CountAsync();
+        var numCleaningYesterday = await _dbContext.Cleanings
+            .Where(c => c.Timestamp >= yesterday && c.Timestamp < today)
+            .CountAsync();
+        var numCleaning = await _dbContext.Cleanings.CountAsync();
+        
+        var numMeasurementsToday = await _dbContext.Measurements
+            .Where(m => m.Timestamp >= today)
+            .CountAsync();
+        var numMeasurementsYesterday = await _dbContext.Measurements
+            .Where(m => m.Timestamp >= yesterday && m.Timestamp < today)
+            .CountAsync();
+        var numMeasurements = await _dbContext.Measurements.CountAsync();
+
+        // Ideas:
+        // - poos since last cleaning?
+        // - avg. events/measurements/cleanings per day?
+        // ... ?
+
+        return Ok(new ScaleEventStats(
+            new ScaleEventCounts(numScaleEvents, numCleaning, numMeasurements),
+            new ScaleEventCounts(numScaleEventsYesterday, numCleaningYesterday, numMeasurementsYesterday),
+            new ScaleEventCounts(numScaleEventsToday, numCleaningToday, numMeasurementsToday)));
+    }
 }

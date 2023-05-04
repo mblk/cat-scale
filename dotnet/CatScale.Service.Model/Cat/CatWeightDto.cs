@@ -9,3 +9,11 @@ public record CatWeightDto
     DateTimeOffset Timestamp,
     double Weight
 );
+
+[PublicAPI]
+public record CreateCatWeightRequest
+(
+    int CatId,
+    DateTimeOffset Timestamp,
+    double Weight
+);

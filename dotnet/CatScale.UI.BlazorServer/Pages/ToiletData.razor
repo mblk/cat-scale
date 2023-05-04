@@ -1,11 +1,9 @@
 @page "/toilet/{Id:int}"
-@using System.Diagnostics
 @using CatScale.Service.Model.Toilet
 @using CatScale.UI.BlazorServer.Services
-@using CatScale.UI.BlazorServer.Utils
 @inject ICatScaleService CatScaleService
 
-<h3>Toilet @Id</h3>
+<h3>Toilette</h3>
 
 @if (_toilet is null)
 {
@@ -13,45 +11,94 @@
 }
 else
 {
-    <p>Id: @_toilet.Id</p>
-    <p>Name: @_toilet.Name</p>
-    <p>Description: @_toilet.Description</p>
+    <hr/>
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>Stammdaten:</div>
 
-    @* <p>Events:</p> *@
-    @* <table class="table"> *@
-    @*     <thead> *@
-    @*     <tr> *@
-    @*         <th>Id</th> *@
-    @*         <th>Start</th> *@
-    @*         <th>End</th> *@
-    @*         <th>Stable phases</th> *@
-    @*         <th>Cleaning</th> *@
-    @*         <th>Measurement</th> *@
-    @*     </tr> *@
-    @*     </thead> *@
-    @*     <tbody> *@
-    @*     @foreach (var e in _toilet.ScaleEvents.OrderByDescending(c => c.Start)) *@
-    @*     { *@
-    @*         <tr> *@
-    @*             <td>@e.Id</td> *@
-    @*             <td>@TimestampFormatter.Format(e.Start)</td> *@
-    @*             <td>@TimestampFormatter.Format(e.End)</td> *@
-    @*             <td>@(e.StablePhases?.Length ?? -1)</td> *@
-    @*             <td>@(e.Cleaning!=null)</td> *@
-    @*             <td>@(e.Measurement!=null)</td> *@
-    @*         </tr> *@
-    @*     } *@
-    @*     </tbody> *@
-    @* </table> *@
+        <AuthorizeView>
+            <Authorized>
+                <div class="btn-group btn-group-sm">
+                    @if (_editMode)
+                    {
+                        <button class="btn btn-sm btn-secondary" @onclick="@DiscardChanges">Verwerfen</button>
+                        <button class="btn btn-sm btn-primary" @onclick="@SaveChanges">Speichern</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-sm btn-primary" @onclick="@Edit">Bearbeiten</button>
+                    }
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+
+    <div class="d-inline-flex w-100">
+        <table class="table table-bordered table-hover m-0 align-middle">
+            <tbody>
+            <tr>
+                <td class="col-3">Id</td>
+                <td class="col-auto">@_toilet.Id</td>
+            </tr>
+            <tr>
+                <td>Name</td>
+                <td>
+                    @if (_editMode)
+                    {
+                        <input type="text" class="form-control" id="name-input" placeholder="Name" @bind-value="_editName">
+                    }
+                    else
+                    {
+                        @_toilet.Name
+                    }
+                </td>
+            </tr>
+            <tr>
+                <td>Beschreibung</td>
+                <td>
+                    @if (_editMode)
+                    {
+                        <textarea class="form-control" rows="3" @bind="_editDescription"></textarea>
+                    }
+                    else
+                    {
+                        @_toilet.Description
+                    }
+                </td>
+            </tr>
+            <tr>
+                <td>Typ</td>
+                <td>asd</td>
+            </tr>
+            <tr>
+                <td>Größe</td>
+                <td>asd</td>
+            </tr>
+            <tr>
+                <td>Bild</td>
+                <td>asd</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
 }
 
 @code {
+
     [Parameter]
     public int Id { get; set; }
-    
+
     private ToiletDto? _toilet;
-    
+
+    private bool _editMode;
+    private string _editName;
+    private string _editDescription;
+
     protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
     {
         try
         {
@@ -62,4 +109,23 @@ else
             Console.WriteLine(e);
         }
     }
+
+    private void Edit()
+    {
+        if (_toilet is null) return;
+
+        _editMode = true;
+        _editName = _toilet.Name;
+        _editDescription = _toilet.Description;
+    }
+
+    private async Task SaveChanges()
+    {
+    }
+
+    private void DiscardChanges()
+    {
+        _editMode = false;
+    }
+
 }

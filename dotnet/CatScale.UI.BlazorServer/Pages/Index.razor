@@ -3,20 +3,33 @@
 @using CatScale.UI.BlazorServer.Services.Authentication
 @inject IAuthenticationService AuthenticationService
 @inject ICatScaleService CatScaleService
+@inject NavigationManager NavigationManager
 
 <style>
     .my-image {
-        width: 100%;
-        height: auto;
+        max-width: 100%;
     }
 </style>
 
 <PageTitle>Index</PageTitle>
 
-<h1>Toilettengeschichten mit Felix und Filou</h1>
+<h3>Toilettengeschichten mit Felix und Filou</h3>
 
-<img src="title.png" style="width: 100%" />
+@* <img src="title.png" class="my-image" /> *@
+
+<hr />
+Aktuelle Messungen:
+<br />
+<img src="@CatScaleService.GetCatGraphUri(_myUri!, 1)" alt="kaputt"/>
+<img src="@CatScaleService.GetCatGraphUri(_myUri!, 2)" alt="kaputt"/>
 
 @code
 {
+    private Uri? _myUri;
+
+    protected override void OnInitialized()
+    {
+        _myUri = new Uri(NavigationManager.Uri);
+    }
+
 }

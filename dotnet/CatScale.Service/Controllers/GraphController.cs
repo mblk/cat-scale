@@ -33,6 +33,87 @@ public class GraphController : ControllerBase
     }
 
     [HttpGet]
+    public async Task<IActionResult> GetCatMeasurements(int catId)
+    {
+        // TODO create one graph for all cats instead?
+        // TODO include measurements and weights?
+        
+        var cat = await _dbContext.Cats
+            .Include(c => c.Measurements)
+            .Include(c => c.Weights)
+            .SingleOrDefaultAsync(c => c.Id == catId);
+        if (cat is null)
+            return NotFound("Cat does not exist");
+
+        var measurements = cat.Measurements.OrderBy(m => m.Timestamp)
+            .ToArray();
+        
+        var sb = new StringBuilder();
+        
+        foreach (var m in measurements)
+            sb.AppendLine($"{m.Timestamp:yyyy-MM-ddTHH:mm:ss.fffZ},{m.CatWeight:F1}");
+
+        var csvData = sb.ToString();
+
+        var minTimestamp = measurements.Min(m => m.Timestamp);
+        var maxTimestamp = measurements.Max(m => m.Timestamp);
+        var minWeight = measurements.Min(m => m.CatWeight);
+        var maxWeight = measurements.Max(m => m.CatWeight);
+
+        var inputFile = $"temp/cat-{catId}.csv";
+        var outputFile = $"temp/cat-{catId}.svg";
+        var gnuplotFile = $"temp/cat-{catId}.gnuplot";
+        
+        var gnuplotConfig = CreateGnuplotConfigForCatMeasurements(minTimestamp, maxTimestamp, minWeight, maxWeight, inputFile, outputFile, cat.Name);
+
+        if (!Directory.Exists("temp"))
+            Directory.CreateDirectory("temp");
+        
+        await System.IO.File.WriteAllTextAsync(inputFile, csvData);
+        await System.IO.File.WriteAllTextAsync(gnuplotFile, gnuplotConfig);
+        
+        var process = Process.Start("gnuplot", gnuplotFile);
+        await process.WaitForExitAsync();
+
+        var image = System.IO.File.OpenRead(outputFile);
+        return File(image, "image/svg+xml");
+    }
+    
+    private string CreateGnuplotConfigForCatMeasurements(DateTimeOffset start, DateTimeOffset end, double minValue, double maxValue, string inputFile, string outputFile, string name)
+    {
+        string startString = start.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        string endString = end.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+
+        string minValueStr = minValue.ToString("F1", CultureInfo.InvariantCulture);
+        string maxValueStr = maxValue.ToString("F1", CultureInfo.InvariantCulture);
+        
+        string yRangeMinStr = (minValue - 100).ToString("F1", CultureInfo.InvariantCulture);
+        string yRangeMaxStr = (maxValue + 100).ToString("F1", CultureInfo.InvariantCulture);
+        
+        var sb = new StringBuilder()
+                // .AppendLine($"set terminal png size 1200,800 font \"Verdana,10\"")
+                .AppendLine($"set terminal svg size 600,300 font \"Helvetica,12\"")
+
+                // TODO font?
+                // TODO output as pdf or postscript ?
+                
+                .AppendLine($"set output '{outputFile}'")
+                .AppendLine($"set xdata time")
+                .AppendLine($"set timefmt \"%Y-%m-%dT%H:%M:%SZ\"")
+                .AppendLine($"set xrange [\"{startString}\":\"{endString}\"]")
+                .AppendLine($"set yrange [ {yRangeMinStr} : {yRangeMaxStr}  ]")
+                .AppendLine($"set format x \"%d.%m\"")
+                .AppendLine($"set datafile separator \",\"")
+                .AppendLine($"set grid")
+            ;
+
+        // plot
+        sb.AppendLine($"plot \"{inputFile}\" using 1:2 title '{name}' with lines");
+        
+        return sb.ToString();
+    }
+    
+    [HttpGet]
     public async Task<IActionResult> GetScaleEvent(int scaleEventId)
     {
         _logger.LogInformation($"Get graph for scale event {scaleEventId}");

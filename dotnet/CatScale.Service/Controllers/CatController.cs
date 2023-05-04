@@ -134,12 +134,20 @@ public class CatController : ControllerBase
             return BadRequest(ModelState);
         
         Cat? existingCat = await _dbContext.Cats
+            .Include(c => c.Measurements)
             .SingleOrDefaultAsync(c => c.Id == id);
 
         if (existingCat is null)
         {
             _logger.LogError($"Can't delete cat {id} because it does not exist");
             return NotFound();
+        }
+
+        // Don't delete 'production' data by accident.
+        if (existingCat.Measurements.Count > 10)
+        {
+            _logger.LogError("Not deleting cat because it has too many measurements");
+            return BadRequest($"Not deleting cat because it has too many measurements");
         }
 
         _logger.LogInformation($"Deleting cat {id}");

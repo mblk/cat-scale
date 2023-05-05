@@ -17,19 +17,20 @@ public class ScaleEventController : ControllerBase
     private readonly CatScaleContext _dbContext;
     private readonly IClassificationService _classificationService;
 
-    public ScaleEventController(ILogger<ScaleEventController> logger, CatScaleContext dbContext, IClassificationService classificationService)
+    public ScaleEventController(ILogger<ScaleEventController> logger, CatScaleContext dbContext,
+        IClassificationService classificationService)
     {
         _logger = logger;
         _dbContext = dbContext;
         _classificationService = classificationService;
     }
-    
+
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ScaleEventDto>>> GetAll(int? toiletId)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
-        
+
         _logger.LogInformation($"Getting all scale events");
 
         var scaleEvents = await _dbContext.ScaleEvents
@@ -38,7 +39,7 @@ public class ScaleEventController : ControllerBase
             .Include(e => e.Measurement)
             .Include(e => e.Cleaning)
             .ToArrayAsync();
-            
+
         var mappedScaleEvents = scaleEvents
             .Select(DataMapper.MapScaleEvent)
             .ToArray();
@@ -51,9 +52,9 @@ public class ScaleEventController : ControllerBase
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
-        
+
         _logger.LogInformation("Get scale event {id}", id);
-        
+
         var scaleEvent = await _dbContext.ScaleEvents
             .AsNoTracking()
             .Include(e => e.StablePhases)
@@ -66,37 +67,37 @@ public class ScaleEventController : ControllerBase
 
         return Ok(DataMapper.MapScaleEvent(scaleEvent));
     }
-    
+
     [Authorize(AuthenticationSchemes = "ApiKey")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] NewScaleEvent newScaleEvent)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
-        
+
         _logger.LogInformation("New cat scale event: {newScaleEvent}", newScaleEvent);
-        
+
         // Check if the event already exists.
         if (await _dbContext.ScaleEvents.AnyAsync(e =>
-            Math.Abs((e.StartTime - newScaleEvent.StartTime).TotalSeconds) < 1 &&
-            Math.Abs((e.EndTime - newScaleEvent.EndTime).TotalSeconds) < 1))
+                Math.Abs((e.StartTime - newScaleEvent.StartTime).TotalSeconds) < 1 &&
+                Math.Abs((e.EndTime - newScaleEvent.EndTime).TotalSeconds) < 1))
         {
             _logger.LogError("Can't create scale event because it already exists: {newScaleEvent}", newScaleEvent);
             return Conflict("Scale event already exists");
         }
-        
+
         // Lookup required data.
         var toilet = await _dbContext.Toilets
             .SingleOrDefaultAsync(t => t.Id == newScaleEvent.ToiletId);
-        
+
         if (toilet is null)
             return NotFound($"Toilet does not exist");
-        
+
         var cats = await _dbContext.Cats
             .AsNoTracking()
             .Include(c => c.Weights)
             .ToArrayAsync();
-        
+
         // Create new scale event.
         var scaleEvent = new ScaleEvent()
         {
@@ -110,15 +111,15 @@ public class ScaleEventController : ControllerBase
                 Value = x.Value
             }).ToList(),
         };
-        
+
         _classificationService.ClassifyScaleEvent(cats, scaleEvent);
 
         await _dbContext.ScaleEvents.AddAsync(scaleEvent);
         await _dbContext.SaveChangesAsync();
 
         // Done.
-        return CreatedAtAction(nameof(GetOne), 
-            new { Id = scaleEvent.Id }, 
+        return CreatedAtAction(nameof(GetOne),
+            new { Id = scaleEvent.Id },
             DataMapper.MapScaleEvent(scaleEvent));
     }
 
@@ -128,12 +129,12 @@ public class ScaleEventController : ControllerBase
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
-        
+
         _logger.LogInformation($"Deleting scale event {id}");
-        
+
         var scaleEvent = await _dbContext.ScaleEvents
             .SingleOrDefaultAsync(x => x.Id == id);
-        
+
         if (scaleEvent is null)
             return NotFound();
 
@@ -142,14 +143,14 @@ public class ScaleEventController : ControllerBase
 
         return Ok();
     }
-    
+
     [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpPost("{id:int}")]
     public async Task<IActionResult> Classify(int id)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
-        
+
         _logger.LogInformation($"Classifying scale event {id}");
 
         var cats = await _dbContext.Cats
@@ -162,16 +163,16 @@ public class ScaleEventController : ControllerBase
             .Include(x => x.Cleaning)
             .Include(x => x.Measurement)
             .SingleOrDefaultAsync(x => x.Id == id);
-        
+
         if (scaleEvent is null)
             return NotFound();
 
         _classificationService.ClassifyScaleEvent(cats, scaleEvent);
         await _dbContext.SaveChangesAsync();
-        
+
         return Ok();
     }
-    
+
     [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpPost]
     public async Task<IActionResult> ClassifyAllEvents()
@@ -187,28 +188,28 @@ public class ScaleEventController : ControllerBase
             .Include(x => x.StablePhases)
             .Include(x => x.Cleaning)
             .Include(x => x.Measurement);
-        
+
         foreach (var scaleEvent in scaleEvents)
         {
             _classificationService.ClassifyScaleEvent(cats, scaleEvent);
         }
 
         await _dbContext.SaveChangesAsync();
-        
+
         return Ok();
     }
-    
+
     [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpPost]
     public async Task<IActionResult> DeleteAllClassifications()
     {
         _logger.LogInformation($"Deleting all classifications");
-        
+
         _dbContext.Cleanings.RemoveRange(_dbContext.Cleanings);
         _dbContext.Measurements.RemoveRange(_dbContext.Measurements);
 
         await _dbContext.SaveChangesAsync();
-        
+
         return Ok();
     }
 
@@ -217,13 +218,13 @@ public class ScaleEventController : ControllerBase
     {
         // TODO use client timezone
         var tzi = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
-       
+
         var today = new DateTimeOffset(DateTime.UtcNow.Date);
 
         today = tzi.IsDaylightSavingTime(today)
             ? today.Add(-tzi.BaseUtcOffset).AddHours(-1)
             : today.Add(-tzi.BaseUtcOffset);
-        
+
         var yesterday = today.AddDays(-1);
 
         var numScaleEventsToday = await _dbContext.ScaleEvents
@@ -233,7 +234,7 @@ public class ScaleEventController : ControllerBase
             .Where(e => e.StartTime >= yesterday && e.StartTime < today)
             .CountAsync();
         var numScaleEvents = await _dbContext.ScaleEvents.CountAsync();
-        
+
         var numCleaningToday = await _dbContext.Cleanings
             .Where(c => c.Timestamp >= today)
             .CountAsync();
@@ -241,7 +242,7 @@ public class ScaleEventController : ControllerBase
             .Where(c => c.Timestamp >= yesterday && c.Timestamp < today)
             .CountAsync();
         var numCleaning = await _dbContext.Cleanings.CountAsync();
-        
+
         var numMeasurementsToday = await _dbContext.Measurements
             .Where(m => m.Timestamp >= today)
             .CountAsync();
@@ -259,5 +260,36 @@ public class ScaleEventController : ControllerBase
             new ScaleEventCounts(numScaleEvents, numCleaning, numMeasurements),
             new ScaleEventCounts(numScaleEventsYesterday, numCleaningYesterday, numMeasurementsYesterday),
             new ScaleEventCounts(numScaleEventsToday, numCleaningToday, numMeasurementsToday)));
+    }
+
+    [HttpGet]
+    public ActionResult<PooCount[]> GetPooCounts()
+    {
+        var result = new List<PooCount>();
+
+        var toilets = _dbContext.Toilets
+            .OrderBy(t => t.Id)
+            .Include(t => t.ScaleEvents)
+            .ThenInclude(e => e.Cleaning)
+            .Include(t => t.ScaleEvents)
+            .ThenInclude(e => e.Measurement);
+
+        foreach (var toilet in toilets)
+        {
+            var lastCleaningTime = toilet
+                                       .ScaleEvents
+                                       .Where(e => e.Cleaning != null)
+                                       .MaxBy(e => e.StartTime)
+                                       ?.StartTime
+                                   ?? DateTimeOffset.MinValue;
+
+            var numMeasurementsSinceLastCleaning = toilet.ScaleEvents
+                .Where(e => e.StartTime > lastCleaningTime)
+                .Count(e => e.Measurement != null);
+
+            result.Add(new PooCount(toilet.Id, numMeasurementsSinceLastCleaning));
+        }
+
+        return Ok(result.ToArray());
     }
 }

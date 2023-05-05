@@ -29,7 +29,7 @@ public interface ICatScaleService // TODO split up
     Task<CatWeightDto[]> GetCatWeights(int catId);
     Task<CatWeightDto> CreateCatWeight(int catId, DateTimeOffset timestamp, double weight);
     Task DeleteCatWeight(int catWeightId);
-    
+
     Task<MeasurementDto[]> GetCatMeasurements(int catId);
 
     //
@@ -43,13 +43,14 @@ public interface ICatScaleService // TODO split up
     Task DeleteAllScaleEventClassifications();
 
     Task<ScaleEventStats> GetScaleEventStats();
+    Task<PooCount[]> GetPooCounts();
 
     //
     // Graphs
     //
     string GetScaleEventGraphUri(Uri sourceUri, int id);
     string GetCatGraphUri(Uri sourceUri, int id);
-    
+
     //
     // ApiKeys
     //
@@ -103,7 +104,7 @@ public class CatScaleService : ICatScaleService
 
     public async Task<CatDto> CreateCat(string name, DateOnly dateOfBirth)
     {
-        var response = (await _httpClient.PutAsJsonAsync("api/Cat/Create", 
+        var response = (await _httpClient.PutAsJsonAsync("api/Cat/Create",
                 new CreateCatRequest(name, dateOfBirth)))
             .EnsureSuccessStatusCode();
 
@@ -113,7 +114,7 @@ public class CatScaleService : ICatScaleService
 
     public async Task<CatDto> UpdateCat(int id, string name, DateOnly dateOfBirth)
     {
-        var response = (await _httpClient.PostAsJsonAsync($"api/Cat/Update/{id}", 
+        var response = (await _httpClient.PostAsJsonAsync($"api/Cat/Update/{id}",
                 new UpdateCatRequest(name, dateOfBirth)))
             .EnsureSuccessStatusCode();
 
@@ -134,7 +135,7 @@ public class CatScaleService : ICatScaleService
         var response = (await _httpClient.PostAsJsonAsync("api/CatWeight/Create",
                 new CreateCatWeightRequest(catId, timestamp, weight)))
             .EnsureSuccessStatusCode();
-        
+
         return await response.Content.ReadFromJsonAsync<CatWeightDto>() ??
                throw new JsonException("Failed to deserialize response");
     }
@@ -142,7 +143,7 @@ public class CatScaleService : ICatScaleService
     public async Task DeleteCatWeight(int catWeightId)
         => (await _httpClient.DeleteAsync($"api/CatWeight/Delete/{catWeightId}"))
             .EnsureSuccessStatusCode();
-    
+
     public async Task<MeasurementDto[]> GetCatMeasurements(int catId)
         => await _httpClient.GetFromJsonAsync<MeasurementDto[]>($"api/Measurement/GetAll/{catId}") ??
            throw new JsonException("Failed to deserialize response");
@@ -174,11 +175,15 @@ public class CatScaleService : ICatScaleService
     public async Task<ScaleEventStats> GetScaleEventStats()
         => await _httpClient.GetFromJsonAsync<ScaleEventStats>("api/ScaleEvent/GetStats") ??
            throw new JsonException("Failed to deserialize response");
-    
+
+    public async Task<PooCount[]> GetPooCounts()
+        => await _httpClient.GetFromJsonAsync<PooCount[]>("api/ScaleEvent/GetPooCounts") ??
+           throw new JsonException("Failed to deserialize response");
+
     //
     // Graphs
     //
-    
+
     public string GetScaleEventGraphUri(Uri sourceUri, int id)
     {
         var host = sourceUri.Host;
@@ -198,7 +203,7 @@ public class CatScaleService : ICatScaleService
         var s = $"{scheme}://{host}:{port}/api/Graph/GetCatMeasurements?catId={id}";
         return s;
     }
-    
+
     //
     // ApiKeys
     //
@@ -209,7 +214,7 @@ public class CatScaleService : ICatScaleService
 
     public async Task<UserApiKeyDto> CreateApiKey(DateTime? expirationDate)
     {
-        var response = (await _httpClient.PostAsJsonAsync("api/User/CreateApiKey", 
+        var response = (await _httpClient.PostAsJsonAsync("api/User/CreateApiKey",
                 new CreateApiKeyRequest(expirationDate)))
             .EnsureSuccessStatusCode();
 
@@ -230,7 +235,7 @@ public class CatScaleService : ICatScaleService
            throw new JsonException("Failed to deserialize response");
 
     public async Task ChangeUserPassword(string oldPassword, string newPassword)
-        => (await _httpClient.PostAsJsonAsync("api/User/ChangePassword", 
+        => (await _httpClient.PostAsJsonAsync("api/User/ChangePassword",
                 new ChangePasswordRequest(oldPassword, newPassword)))
             .EnsureSuccessStatusCode();
 

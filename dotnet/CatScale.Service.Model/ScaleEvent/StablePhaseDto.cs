@@ -26,3 +26,10 @@ public record ScaleEventStats
     ScaleEventCounts Yesterday,
     ScaleEventCounts Today
 );
+
+[PublicAPI]
+public record PooCount
+(
+    int ToiletId,
+    int Count
+);

@@ -1,0 +1,95 @@
+@using System.Collections.Immutable
+@inject ICatScaleService CatScaleService
+
+<style>
+.poo-count {
+    top: 10px;
+}
+
+.poo-count-tooltip {
+    visibility: hidden;
+    position: absolute;
+    z-index: 1;
+    
+    background-color: black;
+    color: white;
+    
+    white-space: nowrap;
+    
+    padding: 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-family: "DejaVu Sans Mono",monospace;
+    
+    top: 25px;
+    left: 25px;
+    
+    pointer-events: none;
+}
+
+.poo-count:hover .poo-count-tooltip {
+    visibility: visible;
+}
+</style>
+
+<div class="d-inline-flex align-items-center">
+
+    @if (_pooCounts is null)
+    {
+        <p>Loading</p>
+    }
+    else
+    {
+        @foreach (var count in _pooCounts)
+        {
+            <div class="position-relative me-2 poo-count">
+
+                <div style="font-size: 32px">💩</div>
+
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" 
+                      style="background-color: @GetNotificationColor(@count.Count)">
+                    @count.Count
+                </span>
+                
+                <span class="poo-count-tooltip">
+                    @GetNotificationText(count)
+                </span>
+                
+            </div>
+        }
+    }
+
+</div>
+
+@code {
+
+    private string GetNotificationColor(int count) 
+        => count switch { 0 => "green", 1 => "orange", _ => "red" };
+
+    private string GetNotificationText(PooCount pooCount)
+        => pooCount.Count switch
+        {
+            0 => $"Katzenklo {pooCount.ToiletId} ist sauber.",
+            1 => $"Katzenklo {pooCount.ToiletId} sollte bald gereinigt werden.",
+            _ => $"Katzenklo {pooCount.ToiletId} muss gereinigt werden.",
+        };
+
+    private PooCount[]? _pooCounts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _pooCounts = await CatScaleService.GetPooCounts();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.ToString());
+        }
+    }
+}

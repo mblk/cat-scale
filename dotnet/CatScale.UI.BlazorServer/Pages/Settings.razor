@@ -1,40 +1,11 @@
 @page "/Settings"
 
 @inject ICatScaleService CatScaleService
+@inject IModalService ModalService
 
 <h3>Settings</h3>
 
-@if (_showModal)
-{
-    <div class="modal fade show" style="display:block; background-color: rgba(10,10,10,.8);" aria-modal="true" role="dialog" @onclick="@ModalCancel">
-        <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
-    
-            <div class="modal-content">
-
-                <!-- Modal Header -->
-                <div class="modal-header">
-                    <h4 class="modal-title">Information</h4>
-                </div>
-
-                <!-- Modal body -->
-                <div class="modal-body">
-                    <p>@_modalMessage</p>
-                </div>
-
-                <!-- Modal footer -->
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" @onclick="@ModalOk">OK</button>
-                    @* <button type="button" class="btn" @onclick="@ModalCancel">Cancel</button> *@
-                    @* <button type="button" class="btn btn-danger" @onclick=@ModalOk>Delete</button> *@
-                </div>
-
-            </div>
-        </div>
-    </div>
-}
-
 <button class="btn btn-sm btn-primary" @onclick="Refresh">Refresh</button>
-<button class="btn btn-sm btn-primary" @onclick="@(() => ShowModal("test"))">Modal test</button>
 
 @if (_userData is null)
 {
@@ -113,25 +84,6 @@ else
 }
 
 @code {
-
-    private bool _showModal;
-    private string? _modalMessage;
-
-    private void ShowModal(string? message)
-    {
-        _modalMessage = message;
-        _showModal = true;
-    }
-    
-    private void ModalCancel()
-    {
-        _showModal = false;
-    }
-
-    private void ModalOk()
-    {
-        _showModal = false;
-    }
     
     private ApplicationUserDto? _userData;
 
@@ -166,18 +118,18 @@ else
             String.IsNullOrWhiteSpace(_newPasswordConfirm) ||
             _newPassword != _newPasswordConfirm)
         {
-            ShowModal("Incorrect input");
+            ModalService.ShowMessage("Incorrect input");
             return;
         }
 
         try
         {
             await CatScaleService.ChangeUserPassword(_oldPassword, _newPassword);
-            ShowModal($"Password changed successfully");
+            ModalService.ShowMessage($"Password changed successfully");
         }
         catch (Exception e)
         {
-            ShowModal($"Error: {e.Message}");
+            ModalService.ShowMessage($"Error: {e.Message}");
         }
     }
 
@@ -185,18 +137,18 @@ else
     {
         if (String.IsNullOrWhiteSpace(_passwordForDelete))
         {
-            ShowModal("Incorrect input");
+            ModalService.ShowMessage("Incorrect input");
             return;
         }
 
         try
         {
             await CatScaleService.DeleteUser(_passwordForDelete);
-            ShowModal($"User deleted successfully");
+            ModalService.ShowMessage($"User deleted successfully");
         }
         catch (Exception e)
         {
-            ShowModal($"Error: {e.Message}");
+            ModalService.ShowMessage($"Error: {e.Message}");
         }
     }
 }

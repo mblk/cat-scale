@@ -1,0 +1,192 @@
+@inject ICatScaleService CatScaleService
+
+<style>
+.my-tooltip {
+    position: relative;
+    display: inline-block;
+   
+    width: 100%;
+    padding: 4px 10px 4px 10px;
+}
+
+.my-tooltip-text {
+    visibility: hidden;
+    position: absolute;
+    z-index: 1;
+    
+    background-color: black;
+    color: white;
+    
+    white-space: nowrap;
+    
+    padding: 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-family: "DejaVu Sans Mono",monospace;
+    
+    top: 25px;
+    
+    pointer-events: none;
+}
+
+.my-tooltip:hover .my-tooltip-text {
+    visibility: visible;
+}
+
+.my-tooltip:hover {
+    background-color: #0c63e440;
+}
+
+.my-table th {
+    text-align: center;
+    vertical-align: middle;
+    
+    margin: 0;
+    padding: 0;
+    
+    width: 60px;
+}
+
+.my-table td {
+    text-align: center;
+    vertical-align: middle;
+    
+    margin: 0;
+    padding: 0;
+}
+</style>
+
+@if (_stats is null)
+{
+    <p>Loading ...</p>
+}
+else
+{
+    <table class="table table-bordered my-table">
+        <thead>
+        <tr>
+            <th></th>
+            <th>
+                <div class="my-tooltip">
+                    <span class="oi oi-eye" style="top: 3px" aria-hidden="true"></span>
+                    <span class="my-tooltip-text">Ereignisse</span>
+                </div>
+            </th>
+            <th>
+                <div class="my-tooltip">
+                    <span class="oi oi-flash" style="top: 3px" aria-hidden="true"></span>
+                    <span class="my-tooltip-text">Messungen</span>
+                </div>
+            </th>
+            <th>
+                <div class="my-tooltip">
+                    <span class="oi oi-trash" style="top: 3px" aria-hidden="true"></span>
+                    <span class="my-tooltip-text">Reinigungen</span>
+                </div>
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                <div class="my-tooltip">
+                    @DateTime.Now.ToString("dd.MM.")
+                    <span class="my-tooltip-text">Heute</span>
+                </div>
+            </td>
+            <td>
+                <div class="my-tooltip">
+                    @_stats.Today.Total
+                    <span class="my-tooltip-text">Heute @_stats.Today.Total Ereignisse</span>
+                </div>
+            </td>
+            <td>
+                <div class="my-tooltip">
+                    @_stats.Today.Measurements
+                    <span class="my-tooltip-text">Heute @_stats.Today.Measurements Messungen</span>
+                </div>
+            </td>
+            <td>
+                <div class="my-tooltip">
+                    @_stats.Today.Cleanings
+                    <span class="my-tooltip-text">Heute @_stats.Today.Cleanings Reinigungen</span>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <div class="my-tooltip">
+                    @DateTime.Now.AddDays(-1).ToString("dd.MM.")
+                    <span class="my-tooltip-text">Gestern</span>
+                </div>
+            </td>
+            <td>
+                <div class="my-tooltip">
+                    @_stats.Yesterday.Total
+                    <span class="my-tooltip-text">Gestern @_stats.Yesterday.Total Ereignisse</span>
+                </div>
+            </td>
+            <td>
+                <div class="my-tooltip">
+                    @_stats.Yesterday.Measurements
+                    <span class="my-tooltip-text">Gestern @_stats.Yesterday.Measurements Messungen</span>
+                </div>
+            </td>
+            <td>
+                <div class="my-tooltip">
+                    @_stats.Yesterday.Cleanings
+                    <span class="my-tooltip-text">Gestern @_stats.Yesterday.Cleanings Reinigungen</span>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <div class="my-tooltip">
+                    -
+                    <span class="my-tooltip-text">Insgesamt</span>
+                </div>
+            </td>
+            <td>
+                <div class="my-tooltip">
+                    @_stats.AllTime.Total
+                    <span class="my-tooltip-text">Insgesamt @_stats.AllTime.Total Ereignisse</span>
+                </div>
+            </td>
+            <td>
+                <div class="my-tooltip">
+                    @_stats.AllTime.Measurements
+                    <span class="my-tooltip-text">Insgesamt @_stats.AllTime.Measurements Messungen</span>
+                </div>
+            </td>
+            <td>
+                <div class="my-tooltip">
+                    @_stats.AllTime.Cleanings
+                    <span class="my-tooltip-text">Insgesamt @_stats.AllTime.Cleanings Reinigungen</span>
+                </div>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+}
+
+@code {
+
+    private ScaleEventStats? _stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh();
+    }
+
+    private async Task Refresh()
+    {
+        try
+        {
+            _stats = await CatScaleService.GetScaleEventStats();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+}

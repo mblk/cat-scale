@@ -1,0 +1,64 @@
+@inject IModalService ModalService
+@implements IDisposable
+
+@if (_show)
+{
+    <div class="modal fade show" style="display:block; background-color: rgba(10,10,10,.8);" aria-modal="true" role="dialog" @onclick="@Cancel">
+        <div class="modal-dialog modal-dialog-centered" @onclick:stopPropagation="true">
+
+            <div class="modal-content">
+
+                <!-- Modal Header -->
+                <div class="modal-header">
+                    <h4 class="modal-title">Information</h4>
+                </div>
+
+                <!-- Modal body -->
+                <div class="modal-body">
+                    <p>@_message</p>
+                </div>
+
+                <!-- Modal footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="@Ok">OK</button>
+                    @* <button type="button" class="btn" @onclick="@ModalCancel">Cancel</button> *@
+                    @* <button type="button" class="btn btn-danger" @onclick=@ModalOk>Delete</button> *@
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _show;
+    private string _message = String.Empty;
+
+    protected override void OnInitialized()
+    {
+        ModalService.OnShowMessage += OnShowMessage;
+    }
+
+    public void Dispose()
+    {
+        ModalService.OnShowMessage -= OnShowMessage;
+    }
+
+    private void OnShowMessage(string message)
+    {
+        _show = true;
+        _message = message;
+
+        InvokeAsync(StateHasChanged);
+    }
+    
+    private void Cancel()
+    {
+        _show = false;
+    }
+
+    private void Ok()
+    {
+        _show = false;
+    }
+}

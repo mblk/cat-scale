@@ -1,12 +1,13 @@
 @page "/ApiKeys"
-@using CatScale.Service.Model.User
-@using CatScale.UI.BlazorServer.Services
+
 @inject ICatScaleService CatScaleService
 
 <h3>ApiKeys</h3>
 
 <button class="btn btn-sm btn-primary" @onclick="Refresh">Refresh</button>
 <button class="btn btn-sm btn-primary" @onclick="CreateKey">Create</button>
+<br />
+<br />
 
 @if (_apiKeys is null)
 {

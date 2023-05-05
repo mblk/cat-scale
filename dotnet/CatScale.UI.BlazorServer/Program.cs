@@ -18,6 +18,7 @@ builder.Services.AddScoped<AuthenticationStateProvider>(s => s.GetRequiredServic
 
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<ICatScaleService, CatScaleService>();
+builder.Services.AddScoped<IModalService, ModalService>();
 
 var serviceAddr = builder.Configuration.GetValue<string>("CatScaleServiceAddr");
 if (String.IsNullOrWhiteSpace(serviceAddr)) throw new ArgumentException("invalid configuration, missing CatScaleServiceAddr");

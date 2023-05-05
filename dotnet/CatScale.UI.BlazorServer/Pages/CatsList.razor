@@ -1,6 +1,5 @@
 @page "/cats"
-@using CatScale.Service.Model.Cat
-@using CatScale.UI.BlazorServer.Services
+
 @inject ICatScaleService CatScaleService
 @inject NavigationManager NavigationManager
 
@@ -86,7 +85,7 @@ else
 
     private void Open(CatDto cat)
     {
-        NavigationManager.NavigateTo($"cat/{cat.Id}");
+        NavigationManager.NavigateTo($"cats/{cat.Id}");
     }
 
     private async Task Delete(CatDto cat)

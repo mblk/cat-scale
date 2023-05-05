@@ -1,5 +1,3 @@
-@using CatScale.UI.BlazorServer.Services.Authentication
-@using System.Diagnostics
 @inject IAuthenticationService AuthenticationService;
 
 <AuthorizeView>
@@ -37,7 +35,7 @@
         }
         catch (Exception e)
         {
-            Debug.WriteLine(e.ToString());
+            Console.WriteLine(e.ToString());
             // TODO show error
         }
     }
@@ -50,7 +48,7 @@
         }
         catch (Exception e)
         {
-            Debug.WriteLine(e.ToString());
+            Console.WriteLine(e.ToString());
             // TODO show error
         }
     }

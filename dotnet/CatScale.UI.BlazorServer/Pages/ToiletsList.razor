@@ -1,7 +1,5 @@
 @page "/toilets"
-@using System.Diagnostics
-@using CatScale.Service.Model.Toilet
-@using CatScale.UI.BlazorServer.Services
+
 @inject ICatScaleService CatScaleService
 
 <h3>Toiletten</h3>
@@ -28,7 +26,7 @@ else
                 <td>@toilet.Id</td>
                 <td>@toilet.Name</td>
                 <td>@toilet.Description</td>
-                <td><a href="toilet/@toilet.Id">Details</a></td>
+                <td><a href="toilets/@toilet.Id">Details</a></td>
             </tr>
         }
         </tbody>
@@ -42,7 +40,7 @@ else
     {
         try
         {
-            Debug.WriteLine("ToiletsList OnInitializedAsync");
+            Console.WriteLine("ToiletsList OnInitializedAsync");
             _toilets = await CatScaleService.GetToiletsList();
         }
         catch (Exception e)

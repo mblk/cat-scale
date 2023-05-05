@@ -1,27 +1,27 @@
 ﻿@page "/"
-@using CatScale.UI.BlazorServer.Services
-@using CatScale.UI.BlazorServer.Services.Authentication
-@inject IAuthenticationService AuthenticationService
+
 @inject ICatScaleService CatScaleService
 @inject NavigationManager NavigationManager
-
-<style>
-    .my-image {
-        max-width: 100%;
-    }
-</style>
+@inject IModalService ModalService
 
 <PageTitle>Index</PageTitle>
 
 <h3>Toilettengeschichten mit Felix und Filou</h3>
 
-@* <img src="title.png" class="my-image" /> *@
-
 <hr />
-Aktuelle Messungen:
+
+Statistiken:<br />
+<div class="d-inline-flex m-3">
+    <EventStatsComponent />
+</div>
 <br />
-<img src="@CatScaleService.GetCatGraphUri(_myUri!, 1)" alt="kaputt"/>
+
+Aktuelle Messungen:<br />
+<img src="@CatScaleService.GetCatGraphUri(_myUri!, 1)" alt="kaputt"/><br />
 <img src="@CatScaleService.GetCatGraphUri(_myUri!, 2)" alt="kaputt"/>
+
+<br />
+<button class="btn btn-sm btn-primary" @onclick="Test">Test</button>
 
 @code
 {
@@ -32,4 +32,8 @@ Aktuelle Messungen:
         _myUri = new Uri(NavigationManager.Uri);
     }
 
+    private void Test()
+    {
+        ModalService.ShowMessage("test 123");
+    }
 }

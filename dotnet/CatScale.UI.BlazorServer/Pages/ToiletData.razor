@@ -1,6 +1,5 @@
-@page "/toilet/{Id:int}"
-@using CatScale.Service.Model.Toilet
-@using CatScale.UI.BlazorServer.Services
+@page "/toilets/{Id:int}"
+
 @inject ICatScaleService CatScaleService
 
 <h3>Toilette</h3>
@@ -90,8 +89,8 @@ else
     private ToiletDto? _toilet;
 
     private bool _editMode;
-    private string _editName;
-    private string _editDescription;
+    private string? _editName;
+    private string? _editDescription;
 
     protected override async Task OnInitializedAsync()
     {
@@ -119,7 +118,7 @@ else
         _editDescription = _toilet.Description;
     }
 
-    private async Task SaveChanges()
+    private void SaveChanges()
     {
     }
 
@@ -127,5 +126,4 @@ else
     {
         _editMode = false;
     }
-
 }

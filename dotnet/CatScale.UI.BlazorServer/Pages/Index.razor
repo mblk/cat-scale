@@ -6,6 +6,13 @@
 
 <PageTitle>Index</PageTitle>
 
+<style>
+.cat-graph {
+    max-width: 100%;
+}
+</style>
+
+
 <h3>Toilettengeschichten mit Felix und Filou</h3>
 
 <hr />
@@ -17,8 +24,8 @@ Statistiken:<br />
 <br />
 
 Aktuelle Messungen:<br />
-<img src="@CatScaleService.GetCatGraphUri(_myUri!, 1)" alt="kaputt"/><br />
-<img src="@CatScaleService.GetCatGraphUri(_myUri!, 2)" alt="kaputt"/>
+<img class="cat-graph" src="@CatScaleService.GetCatGraphUri(_myUri!, 1)" alt=""/><br />
+<img class="cat-graph" src="@CatScaleService.GetCatGraphUri(_myUri!, 2)" alt=""/>
 
 <br />
 <button class="btn btn-sm btn-primary" @onclick="Test">Test</button>

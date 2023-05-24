@@ -1,10 +1,9 @@
 ﻿@page "/"
 
 @inject ICatScaleService CatScaleService
-@inject NavigationManager NavigationManager
 @inject IModalService ModalService
 
-<PageTitle>Index</PageTitle>
+@* <PageTitle>Index</PageTitle> *@
 
 <style>
 .cat-graph {
@@ -24,19 +23,16 @@ Statistiken:<br />
 <br />
 
 Aktuelle Messungen:<br />
-<img class="cat-graph" src="@CatScaleService.GetCatGraphUri(_myUri!, 1)" alt=""/><br />
-<img class="cat-graph" src="@CatScaleService.GetCatGraphUri(_myUri!, 2)" alt=""/>
+<img class="cat-graph" src="@CatScaleService.GetCatGraphUri(1)" alt=""/><br />
+<img class="cat-graph" src="@CatScaleService.GetCatGraphUri(2)" alt=""/>
 
 <br />
 <button class="btn btn-sm btn-primary" @onclick="Test">Test</button>
 
 @code
 {
-    private Uri? _myUri;
-
     protected override void OnInitialized()
     {
-        _myUri = new Uri(NavigationManager.Uri);
     }
 
     private void Test()

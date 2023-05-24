@@ -48,8 +48,8 @@ public interface ICatScaleService // TODO split up
     //
     // Graphs
     //
-    string GetScaleEventGraphUri(Uri sourceUri, int id);
-    string GetCatGraphUri(Uri sourceUri, int id);
+    string GetScaleEventGraphUri(int id);
+    string GetCatGraphUri(int id);
 
     //
     // ApiKeys
@@ -71,10 +71,12 @@ public interface ICatScaleService // TODO split up
 public class CatScaleService : ICatScaleService
 {
     private readonly HttpClient _httpClient;
+    private readonly IWebHostEnvironment _environment;
 
-    public CatScaleService(HttpClient httpClient)
+    public CatScaleService(HttpClient httpClient, IWebHostEnvironment environment)
     {
         _httpClient = httpClient;
+        _environment = environment;
     }
 
     //
@@ -184,24 +186,35 @@ public class CatScaleService : ICatScaleService
     // Graphs
     //
 
-    public string GetScaleEventGraphUri(Uri sourceUri, int id)
+    private string GetGraphUri(string path)
     {
-        var host = sourceUri.Host;
-        var port = _httpClient.BaseAddress?.Port ?? 5000;
-        var scheme = _httpClient.BaseAddress?.Scheme ?? "http";
+        if (_environment.IsDevelopment())
+        {
+            var baseAddress = _httpClient.BaseAddress;
+            if (baseAddress is null) throw new InvalidOperationException("API BaseAddress not set");
+            
+            var host = baseAddress.Host;
+            var port = baseAddress.Port;
+            var scheme = baseAddress.Scheme;
 
-        var s = $"{scheme}://{host}:{port}/api/Graph/GetScaleEvent?scaleEventId={id}";
-        return s;
+            // Development
+            return $"{scheme}://{host}:{port}/{path}";
+        }
+        else
+        {
+            // Production / reverse-proxy
+            return $"/{path}";
+        }
     }
 
-    public string GetCatGraphUri(Uri sourceUri, int id)
+    public string GetScaleEventGraphUri(int id)
     {
-        var host = sourceUri.Host;
-        var port = _httpClient.BaseAddress?.Port ?? 5000;
-        var scheme = _httpClient.BaseAddress?.Scheme ?? "http";
+        return GetGraphUri($"api/Graph/GetScaleEvent?scaleEventId={id}");
+    }
 
-        var s = $"{scheme}://{host}:{port}/api/Graph/GetCatMeasurements?catId={id}";
-        return s;
+    public string GetCatGraphUri(int id)
+    {
+        return GetGraphUri($"api/Graph/GetCatMeasurements?catId={id}");
     }
 
     //

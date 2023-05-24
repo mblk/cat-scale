@@ -8,15 +8,15 @@ if [ -d $PUBLISH_DIR ]; then
 fi
 
 echo "service..."
-dotnet publish ../dotnet/CatScale.Service/CatScale.Service.csproj                 $PUBLISH_OPTIONS -o $PUBLISH_DIR/service/
+dotnet publish ../dotnet/CatScale.Service/CatScale.Service.csproj                 $PUBLISH_OPTIONS -o $PUBLISH_DIR/CatScale.Service/
 
 echo "blazorserver..."
-dotnet publish ../dotnet/CatScale.UI.BlazorServer/CatScale.UI.BlazorServer.csproj $PUBLISH_OPTIONS -o $PUBLISH_DIR/blazorserver/
+dotnet publish ../dotnet/CatScale.UI.BlazorServer/CatScale.UI.BlazorServer.csproj $PUBLISH_OPTIONS -o $PUBLISH_DIR/CatScale.UI.BlazorServer/
 
 echo "compress..."
 cd $PUBLISH_DIR
 
-tar -czf service.tar.gz service/
-tar -czf blazorserver.tar.gz blazorserver/
+tar -czf CatScale.Service.tar.gz         CatScale.Service/
+tar -czf CatScale.UI.BlazorServer.tar.gz CatScale.UI.BlazorServer/
 
 echo "done"

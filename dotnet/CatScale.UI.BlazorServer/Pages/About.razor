@@ -1,0 +1,63 @@
+@page "/About"
+@using System.Diagnostics
+
+@inject IWebHostEnvironment HostEnvironment
+
+<h3>Über</h3>
+
+<table class="table">
+    <tbody>
+    <tr>
+        <th>ApplicationName</th>
+        <td>@HostEnvironment.ApplicationName</td>
+    </tr>
+    <tr>
+        <th>EnvironmentName</th>
+        <td>@HostEnvironment.EnvironmentName</td>
+    </tr>
+    <tr>
+        <th>ContentRootPath</th>
+        <td>@HostEnvironment.ContentRootPath</td>
+    </tr>
+    <tr>
+        <th>IsDevelopment</th>
+        <td>@HostEnvironment.IsDevelopment()</td>
+    </tr>
+    <tr>
+        <th>IsProduction</th>
+        <td>@HostEnvironment.IsProduction()</td>
+    </tr>
+    <tr>
+        <th>AssemblyVersion</th>
+        <td>@VersionInfos.Version</td>
+    </tr>
+    <tr>
+        <th>BuildInfo</th>
+        <td>@VersionInfos.BuildTime (UTC)</td>
+    </tr>
+    <tr>
+        <th>StartTime</th>
+        <td>@Process.GetCurrentProcess().StartTime</td>
+    </tr>
+    <tr>
+        <th>TotalProcessorTime</th>
+        <td>@Process.GetCurrentProcess().TotalProcessorTime</td>
+    </tr>
+    <tr>
+        <th>Bits</th>
+        <td>@(IntPtr.Size * 8)</td>
+    </tr>
+    <tr>
+        <th>PrivateMemorySize</th>
+        <td>@(Process.GetCurrentProcess().PrivateMemorySize64 / 1024 / 1024) MiB</td>
+    </tr>
+    <tr>
+        <th>HeapSize</th>
+        <td>@(GC.GetTotalMemory(false) / 1024 / 1024) MiB</td>
+    </tr>
+    </tbody>
+</table>
+
+@code {
+
+}

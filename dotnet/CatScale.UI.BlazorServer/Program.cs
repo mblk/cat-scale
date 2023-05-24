@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Localization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Host.UseSystemd();
+
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
@@ -48,14 +50,18 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+var pathBaseConfig = app.Configuration.GetValue<string>("PathBase");
+if (!String.IsNullOrWhiteSpace(pathBaseConfig))
+{
+    Console.WriteLine($"UsePathBase: '{pathBaseConfig}'");
+    app.UsePathBase(new PathString(pathBaseConfig));
+}
+
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
-
 app.UseRouting();
 
 app.UseRequestLocalization();
-//app.UseRequestLocalization("de-DE");
 
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");

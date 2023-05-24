@@ -1,29 +1,32 @@
 #!/bin/bash
 
-echo "shutdown running processes ..."
-ssh user@vserver "killall CatScale.UI.BlazorServer; killall CatScale.Service"
-
-sleep 2
-
-echo "cleanup screen sessions ..."
-ssh user@vserver "echo 'before'; screen -ls; screen -ls | grep 'cs_' | cut -d. -f1 | tr --delete '\t' | xargs -r kill -9; screen -wipe; echo 'after'; screen -ls;"
+echo "shutdown running services ..."
+ssh user@vserver "sudo systemctl stop CatScale.UI.BlazorServer"
+ssh user@vserver "sudo systemctl stop CatScale.Service"
 
 echo "delete old files ..."
-ssh user@vserver "rm apps/ -R; mkdir apps/"
+ssh user@vserver "rm apps/*.gz; rm apps/CatScale.Service -R; rm apps/CatScale.UI.BlazorServer -R"
 
-echo "upload archives..."
+echo "upload archives ..."
 scp publish/*.tar.gz user@vserver:/home/user/apps
 
-echo "unpack archives..."
-ssh user@vserver "cd apps; tar -xzf service.tar.gz; tar -xzf blazorserver.tar.gz;"
+echo "unpack archives ..."
+ssh user@vserver "cd apps; tar -xzf CatScale.Service.tar.gz; tar -xzf CatScale.UI.BlazorServer.tar.gz; rm *.gz"
 
-echo "copy configs..."
-ssh user@vserver "cp secrets/appsettings.json.service apps/service/appsettings.json; cp secrets/appsettings.json.blazorserver apps/blazorserver/appsettings.json"
+echo "copy configs ..."
+ssh user@vserver "cp secrets/CatScale.Service.appsettings.json         apps/CatScale.Service/appsettings.json"
+ssh user@vserver "cp secrets/CatScale.UI.BlazorServer.appsettings.json apps/CatScale.UI.BlazorServer/appsettings.json"
 
-echo "start service..."
-ssh user@vserver "(cd /home/user/apps/service      && screen -d -m -S cs_service      ./CatScale.Service)"
+echo "copy service files ..."
+ssh user@vserver "sudo cp apps/CatScale.Service/CatScale.Service.service                 /etc/systemd/system"
+ssh user@vserver "sudo cp apps/CatScale.UI.BlazorServer/CatScale.UI.BlazorServer.service /etc/systemd/system"
 
-echo "start blazorserver..."
-ssh user@vserver "(cd /home/user/apps/blazorserver && screen -d -m -S cs_blazorserver ./CatScale.UI.BlazorServer)"
+echo "reload systemd ..."
+ssh user@vserver "sudo systemctl daemon-reload"
+
+echo "start services ..."
+ssh user@vserver "sudo systemctl start CatScale.Service"
+ssh user@vserver "sudo systemctl start CatScale.UI.BlazorServer"
 
 echo "done"
+

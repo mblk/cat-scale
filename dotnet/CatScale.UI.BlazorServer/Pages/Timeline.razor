@@ -1,7 +1,6 @@
 @page "/Timeline"
 
 @inject ICatScaleService CatScaleService
-@inject NavigationManager NavigationManager
 
 <h3>Timeline</h3>
 
@@ -129,7 +128,7 @@ else
                                 </tbody>
                             </table>
 
-                            <img src="@CatScaleService.GetScaleEventGraphUri(_myUri!, vm.ScaleEvent.Id)" style="width: 100%" alt="Grafik kann nicht geladen werden"/>
+                            <img src="@CatScaleService.GetScaleEventGraphUri(vm.ScaleEvent.Id)" style="width: 100%" alt="Grafik kann nicht geladen werden"/>
                             <br/>
                             
                             <AuthorizeView>
@@ -150,8 +149,6 @@ else
 }
 
 @code {
-    private Uri? _myUri;
-
     private CatDto[]? _cats;
     
     private ScaleEventDto[]? _scaleEvents;
@@ -202,15 +199,12 @@ else
     {
         try
         {
-            _myUri = null;
             _cats = null;
             _scaleEvents = null;
             _scaleEventViewModels = null;
 
             await InvokeAsync(StateHasChanged);
             
-            _myUri = new Uri(NavigationManager.Uri);
-
             _cats = await CatScaleService.GetAllCats();
             
             _scaleEvents = await CatScaleService.GetScaleEvents();

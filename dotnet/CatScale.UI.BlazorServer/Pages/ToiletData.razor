@@ -2,6 +2,12 @@
 
 @inject ICatScaleService CatScaleService
 
+<style>
+.toilet-graph {
+    max-width: 100%;
+}
+</style>
+
 <h3>Toilette</h3>
 
 @if (_toilet is null)
@@ -78,6 +84,17 @@ else
             </tr>
             </tbody>
         </table>
+    </div>
+    
+    <div>
+        <hr />
+        <div>Messwerte (letzte 24h):</div>
+        <img class="toilet-graph" src="@CatScaleService.GetCombinedToiletGraphUri(_toilet.Id, ToiletSensorValue.Humidity, ToiletSensorValue.Temperature)" alt=""/><br/>
+        <img class="toilet-graph" src="@CatScaleService.GetCombinedToiletGraphUri(_toilet.Id, ToiletSensorValue.Humidity, ToiletSensorValue.Co2)" alt=""/><br/>
+        <img class="toilet-graph" src="@CatScaleService.GetCombinedToiletGraphUri(_toilet.Id, ToiletSensorValue.Humidity, ToiletSensorValue.Pressure)" alt=""/><br/>
+        <img class="toilet-graph" src="@CatScaleService.GetCombinedToiletGraphUri(_toilet.Id, ToiletSensorValue.Co2, ToiletSensorValue.Tvoc)" alt=""/><br/>
+        <img class="toilet-graph" src="@CatScaleService.GetToiletGraphUri(_toilet.Id, ToiletSensorValue.Weight)" alt=""/><br/>
+        <img class="toilet-graph" src="@CatScaleService.GetToiletGraphUri(_toilet.Id, ToiletSensorValue.RawWeight)" alt=""/><br/>
     </div>
 }
 

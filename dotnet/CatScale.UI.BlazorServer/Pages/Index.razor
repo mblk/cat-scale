@@ -11,23 +11,23 @@
 }
 </style>
 
-
 <h3>Toilettengeschichten mit Felix und Filou</h3>
 
 <hr />
-
 Statistiken:<br />
-<div class="d-inline-flex m-3">
+<div class="d-inline-flex m-3 mb-0">
     <EventStatsComponent />
 </div>
-<br />
 
+<hr />
 Aktuelle Messungen:<br />
 <img class="cat-graph" src="@CatScaleService.GetCatGraphUri(1)" alt=""/><br />
-<img class="cat-graph" src="@CatScaleService.GetCatGraphUri(2)" alt=""/>
+<img class="cat-graph" src="@CatScaleService.GetCatGraphUri(2)" alt=""/><br />
+<img class="cat-graph" src="@CatScaleService.GetCombinedCatGraphUri(1, 2, false)" alt=""/><br />
+<img class="cat-graph" src="@CatScaleService.GetCombinedCatGraphUri(1, 2, true)" alt=""/><br />
 
-<br />
-<button class="btn btn-sm btn-primary" @onclick="Test">Test</button>
+@* <br /> *@
+@* <button class="btn btn-sm btn-primary" @onclick="Test">Test</button> *@
 
 @code
 {
@@ -35,8 +35,8 @@ Aktuelle Messungen:<br />
     {
     }
 
-    private void Test()
-    {
-        ModalService.ShowMessage("test 123");
-    }
+    // private void Test()
+    // {
+    //     ModalService.ShowMessage("test 123");
+    // }
 }

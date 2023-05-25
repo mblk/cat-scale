@@ -1,6 +1,7 @@
 @page "/toilets"
 
 @inject ICatScaleService CatScaleService
+@inject NavigationManager NavigationManager
 
 <h3>Toiletten</h3>
 
@@ -26,7 +27,11 @@ else
                 <td>@toilet.Id</td>
                 <td>@toilet.Name</td>
                 <td>@toilet.Description</td>
-                <td><a href="toilets/@toilet.Id">Details</a></td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-sm btn-primary" @onclick="@(() => Open(toilet))">Details</button>
+                    </div>
+                </td>
             </tr>
         }
         </tbody>
@@ -47,5 +52,10 @@ else
         {
             Console.WriteLine(e);
         }
+    }
+
+    private void Open(ToiletDto toilet)
+    {
+        NavigationManager.NavigateTo($"toilets/{toilet.Id}");
     }
 }

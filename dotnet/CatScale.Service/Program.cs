@@ -54,7 +54,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 // builder.Services.AddScoped<IJwtService, JwtService>();
-builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
+
 
  builder.Services
      .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -80,7 +80,10 @@ builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
 builder.Services.AddScoped<IClassificationService, ClassificationService>();
+builder.Services.AddScoped<IInfluxService, InfluxService>();
+builder.Services.AddScoped<IGraphService, GraphService>();
 
 var app = builder.Build();
 

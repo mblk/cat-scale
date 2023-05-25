@@ -48,9 +48,13 @@ public interface ICatScaleService // TODO split up
     //
     // Graphs
     //
+    
     string GetScaleEventGraphUri(int id);
     string GetCatGraphUri(int id);
-
+    string GetCombinedCatGraphUri(int id1, int id2, bool sameAxis);
+    string GetToiletGraphUri(int id, ToiletSensorValue sensorValue);
+    string GetCombinedToiletGraphUri(int id, ToiletSensorValue sensorValue1, ToiletSensorValue sensorValue2);
+    
     //
     // ApiKeys
     //
@@ -215,6 +219,21 @@ public class CatScaleService : ICatScaleService
     public string GetCatGraphUri(int id)
     {
         return GetGraphUri($"api/Graph/GetCatMeasurements?catId={id}");
+    }
+
+    public string GetCombinedCatGraphUri(int id1, int id2, bool sameAxis)
+    {
+        return GetGraphUri($"api/Graph/GetCombinedCatMeasurements?catId1={id1}&catId2={id2}&sameAxis={sameAxis}");
+    }
+    
+    public string GetToiletGraphUri(int id, ToiletSensorValue sensorValue)
+    {
+        return GetGraphUri($"api/Graph/GetToiletData?toiletId={id}&sensorValue={sensorValue}");
+    }
+    
+    public string GetCombinedToiletGraphUri(int id, ToiletSensorValue sensorValue1, ToiletSensorValue sensorValue2)
+    {
+        return GetGraphUri($"api/Graph/GetCombinedToiletData?toiletId={id}&sensorValue1={sensorValue1}&sensorValue2={sensorValue2}");
     }
 
     //

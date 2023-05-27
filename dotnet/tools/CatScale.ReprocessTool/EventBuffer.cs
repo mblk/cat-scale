@@ -32,7 +32,8 @@ internal class EventBuffer
     
     public void EndOfEvent()
     {
-        _scaleEvents.Add(new NewScaleEvent(ToiletId: 1, _eventStartTime, CurrentTime, _stablePhases.ToArray()));
+        _scaleEvents.Add(new NewScaleEvent(ToiletId: 1, _eventStartTime, CurrentTime,
+            _stablePhases.ToArray(), 0, 0, 0));
         _isInEvent = false;
     }
 

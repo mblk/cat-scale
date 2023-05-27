@@ -72,6 +72,10 @@ else
                             Dauer: @((vm.ScaleEvent.End - vm.ScaleEvent.Start).TotalSeconds.ToString("F0"))s<br/>
                             Katzenklo: @vm.ScaleEvent.ToiletId<br />
                             
+                            Temperature: @vm.ScaleEvent.Temperature °C<br />
+                            Luftfeuchte: @vm.ScaleEvent.Humidity %<br />
+                            Luftdruck: @vm.ScaleEvent.Pressure Pa<br />
+                            
                             @if (vm.ScaleEvent.Cleaning is null)
                             {
                                 <div>Keine Reinigung</div>

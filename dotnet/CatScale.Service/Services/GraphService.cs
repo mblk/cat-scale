@@ -377,6 +377,6 @@ public class GraphService : IGraphService
 
     private static string ConvertDoubleToString(double value)
     {
-        return value.ToString("F1", CultureInfo.InvariantCulture);
+        return value.ToString("F2", CultureInfo.InvariantCulture);
     }
 }

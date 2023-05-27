@@ -38,7 +38,10 @@ public static partial class DataMapper
         return new ScaleEventDto(scaleEvent.Id, scaleEvent.ToiletId, scaleEvent.StartTime, scaleEvent.EndTime,
             scaleEvent.StablePhases?.Select(MapStablePhase).ToArray() ?? Array.Empty<StablePhaseDto>(),
             cleaningDto,
-            measurementDto);
+            measurementDto,
+            scaleEvent.Temperature,
+            scaleEvent.Humidity,
+            scaleEvent.Pressure);
     }
 
     public static StablePhaseDto MapStablePhase(StablePhase stablePhase)

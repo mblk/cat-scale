@@ -13,5 +13,8 @@ public record ScaleEventDto
     DateTimeOffset End,
     StablePhaseDto[] StablePhases,
     CleaningDto? Cleaning,
-    MeasurementDto? Measurement
+    MeasurementDto? Measurement,
+    double Temperature,
+    double Humidity,
+    double Pressure
 );

@@ -8,5 +8,8 @@ public record NewScaleEvent
     int ToiletId,
     DateTimeOffset StartTime,
     DateTimeOffset EndTime,
-    NewStablePhase[] StablePhases
+    NewStablePhase[] StablePhases,
+    double Temperature,
+    double Humidity,
+    double Pressure
 );

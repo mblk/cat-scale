@@ -110,6 +110,9 @@ public class ScaleEventController : ControllerBase
                 Length = x.Length,
                 Value = x.Value
             }).ToList(),
+            Temperature = newScaleEvent.Temperature,
+            Humidity = newScaleEvent.Humidity,
+            Pressure = newScaleEvent.Pressure,
         };
 
         _classificationService.ClassifyScaleEvent(cats, scaleEvent);

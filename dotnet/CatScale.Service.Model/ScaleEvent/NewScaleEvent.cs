@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using JetBrains.Annotations;
 
 namespace CatScale.Service.Model.ScaleEvent;
@@ -5,11 +6,11 @@ namespace CatScale.Service.Model.ScaleEvent;
 [PublicAPI]
 public record NewScaleEvent
 (
-    int ToiletId,
-    DateTimeOffset StartTime,
-    DateTimeOffset EndTime,
+    [Required] int? ToiletId,
+    [Required] DateTimeOffset? StartTime,
+    [Required] DateTimeOffset? EndTime,
     NewStablePhase[] StablePhases,
-    double Temperature,
-    double Humidity,
-    double Pressure
+    [Required] double? Temperature,
+    [Required] double? Humidity,
+    [Required] double? Pressure
 );

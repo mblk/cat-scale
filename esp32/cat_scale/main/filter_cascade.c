@@ -95,8 +95,7 @@ double filter_cascade_process(double input, double dt)
         clear_stable_phase();
     }
 
-
-    // activate switch?
+    // activate hpf-hold-switch?
     if (fabs(output_dxdt1) > dxdt_threshold || output_grams > 1000.0 || output_grams < -400.0) // TODO does not work when refilling
     {
         if (!g_input_switch)

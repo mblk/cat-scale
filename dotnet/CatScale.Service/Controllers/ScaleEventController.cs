@@ -75,12 +75,32 @@ public class ScaleEventController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        int toiletId = newScaleEvent.ToiletId!.Value;
+        DateTimeOffset startTime = newScaleEvent.StartTime!.Value;
+        DateTimeOffset endTime = newScaleEvent.EndTime!.Value;
+        double temperature = newScaleEvent.Temperature!.Value;
+        double humidity = newScaleEvent.Humidity!.Value;
+        double pressure = newScaleEvent.Pressure!.Value;
+
         _logger.LogInformation("New cat scale event: {newScaleEvent}", newScaleEvent);
 
+        // Check if dates are plausible.
+        if (endTime < startTime.AddSeconds(1))
+            return BadRequest("Event too short");
+
+        if (endTime > startTime.AddMinutes(15))
+            return BadRequest("Event too long");
+
+        if (startTime > DateTimeOffset.Now)
+            return BadRequest("Start time is in future");
+
+        if (startTime < DateTimeOffset.Now.AddDays(-7))
+            return BadRequest("Start time is too far in the past");
+        
         // Check if the event already exists.
         if (await _dbContext.ScaleEvents.AnyAsync(e =>
-                Math.Abs((e.StartTime - newScaleEvent.StartTime).TotalSeconds) < 1 &&
-                Math.Abs((e.EndTime - newScaleEvent.EndTime).TotalSeconds) < 1))
+                Math.Abs((e.StartTime - startTime).TotalSeconds) < 1 &&
+                Math.Abs((e.EndTime - endTime).TotalSeconds) < 1))
         {
             _logger.LogError("Can't create scale event because it already exists: {newScaleEvent}", newScaleEvent);
             return Conflict("Scale event already exists");
@@ -88,7 +108,7 @@ public class ScaleEventController : ControllerBase
 
         // Lookup required data.
         var toilet = await _dbContext.Toilets
-            .SingleOrDefaultAsync(t => t.Id == newScaleEvent.ToiletId);
+            .SingleOrDefaultAsync(t => t.Id == toiletId);
 
         if (toilet is null)
             return NotFound($"Toilet does not exist");
@@ -102,17 +122,17 @@ public class ScaleEventController : ControllerBase
         var scaleEvent = new ScaleEvent()
         {
             ToiletId = toilet.Id,
-            StartTime = newScaleEvent.StartTime.ToUniversalTime(),
-            EndTime = newScaleEvent.EndTime.ToUniversalTime(),
+            StartTime = startTime.ToUniversalTime(),
+            EndTime = endTime.ToUniversalTime(),
             StablePhases = newScaleEvent.StablePhases.Select(x => new StablePhase()
             {
                 Timestamp = x.Timestamp.ToUniversalTime(),
                 Length = x.Length,
                 Value = x.Value
             }).ToList(),
-            Temperature = newScaleEvent.Temperature,
-            Humidity = newScaleEvent.Humidity,
-            Pressure = newScaleEvent.Pressure,
+            Temperature = temperature,
+            Humidity = humidity,
+            Pressure = pressure,
         };
 
         _classificationService.ClassifyScaleEvent(cats, scaleEvent);

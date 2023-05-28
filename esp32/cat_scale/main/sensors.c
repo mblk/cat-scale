@@ -207,6 +207,9 @@ static void sensors_read_task(void *task_args)
 
         // The ccs811 sensor needs to know the external temperature and humidity to perform some corrections.
         ccs811_set_environment_data(slow_data.temperature, slow_data.humidity);
+
+        // Forward sensor data to the measurement-module.
+        measurement_update_environment_data(slow_data.temperature, slow_data.humidity, slow_data.pressure);
     }
 }
 

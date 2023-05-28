@@ -51,9 +51,16 @@ typedef struct {
     struct timeval end;
     stable_phase_t *first_stable_phase;
     stable_phase_t *last_stable_phase;
+    double temperature;
+    double humidity;
+    double pressure;
 } scale_event_t;
 
 static MessageBufferHandle_t event_message_buffer = NULL;
+
+static double current_temperature;
+static double current_humidity;
+static double current_pressure;
 
 static void measurement_post_task(void*);
 
@@ -134,10 +141,13 @@ static void add_stable_phase(scale_event_t *scale_event, const event_t *event)
 static esp_err_t serialize_scale_event(const scale_event_t *scale_event, char *output_buffer, size_t output_buffer_size)
 {
     assert(scale_event);
+    assert(output_buffer);
+    assert(output_buffer_size);
+
     memset(output_buffer, 0, output_buffer_size);
     size_t written_characters = 0;
 
-    const int toiletId = 1; // TODO from config?
+    const int toiletId = 1; // TODO get from config?
 
     char start_time_buffer[32] = {};
     char end_time_buffer[32] = {};
@@ -152,10 +162,16 @@ static esp_err_t serialize_scale_event(const scale_event_t *scale_event, char *o
         "\"toiletId\": %d,"
         "\"startTime\": \"%s\","
         "\"endTime\": \"%s\","
+        "\"temperature\": %0.2f,"   // °C
+        "\"humidity\": %0.2f,"      // %
+        "\"pressure\": %0.1f,"      // Pa
         "\"stablePhases\": [",
         toiletId,
         start_time_buffer,
-        end_time_buffer
+        end_time_buffer,
+        scale_event->temperature,
+        scale_event->humidity,
+        scale_event->pressure
         );
 
     if (written_characters >= output_buffer_size) {
@@ -230,6 +246,10 @@ static void measurement_post_task(void*)
                     if (current_event)
                         destroy_scale_event(current_event);
                     current_event = create_scale_event(&e);
+                    // Copy environmental conditions at the start of the event.
+                    current_event->temperature = current_temperature;
+                    current_event->humidity = current_humidity;
+                    current_event->pressure = current_pressure;
                     break;
 
                 case event_type_stable_phase:
@@ -321,4 +341,12 @@ void measurement_mark_end_of_event(void)
     };
 
     send_event(&e);
+}
+
+void measurement_update_environment_data(double temperature, double humidity, double pressure)
+{
+    // Note: Intentionally not using any synchronization primitive here under the assumption that double's are copied atomically.
+    current_temperature = temperature;
+    current_humidity = humidity;
+    current_pressure = pressure;
 }

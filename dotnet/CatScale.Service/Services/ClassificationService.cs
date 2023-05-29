@@ -35,7 +35,7 @@ public class ClassificationService : IClassificationService
         (Cat Cat, double Diff)[] catsAndDiffs = catsAndWeights
             .Select(t => (t.Cat, Diff: Math.Abs(weight - t.Weight)))
             .Where(t => t.Diff < tolerance)
-            .OrderByDescending(t => t.Diff)
+            .OrderBy(t => t.Diff)
             .ToArray();
 
         if (catsAndDiffs.Any())

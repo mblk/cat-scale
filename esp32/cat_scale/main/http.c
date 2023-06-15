@@ -3,6 +3,7 @@
 #include "http.h"
 #include "hx711.h"
 #include "time.h"
+#include "http_secrets.h"
 
 #include "sdkconfig.h"
 
@@ -17,6 +18,7 @@
 #include <esp_log.h>
 #include <esp_tls.h>
 #include <esp_http_client.h>
+#include <esp_crt_bundle.h>
 
 static const char *TAG = "app-http";
 
@@ -119,8 +121,6 @@ esp_err_t http_post_sensor_data_influx(const char *sensor_data)
     return ESP_OK;
 }
 
-#include "http_secrets.h"
-
 static esp_err_t http_post_json_data_with_endpoint(int endpoint, const char *path, const char *json)
 {
     assert(path);
@@ -132,13 +132,14 @@ static esp_err_t http_post_json_data_with_endpoint(int endpoint, const char *pat
     if (!addr || !token) return ESP_FAIL;
 
     char url[256] = {};
-    snprintf(url, sizeof(url), "http://%s/%s", addr, path);
+    snprintf(url, sizeof(url), "%s/%s", addr, path);
     ESP_LOGI(TAG, "Posting to '%s' ...", url);
 
     const esp_http_client_config_t config = {
         .url = url,
         .method = HTTP_METHOD_POST,
         .event_handler = http_client_event_handler,
+        .crt_bundle_attach = esp_crt_bundle_attach,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);

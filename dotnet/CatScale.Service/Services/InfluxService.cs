@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using CatScale.Service.Model.Toilet;
 using InfluxDB.Client;
@@ -6,9 +7,9 @@ namespace CatScale.Service.Services;
 
 public interface IInfluxService
 {
-    Task<IEnumerable<(DateTime, double)>> GetRawData(DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value);
+    Task<IEnumerable<(DateTimeOffset, double)>> GetRawData(DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value);
 
-    Task<IEnumerable<(DateTime, double)>> GetAggregatedData(DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value);
+    Task<IEnumerable<(DateTimeOffset, double)>> GetAggregatedData(DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value);
 }
 
 public class InfluxService : IInfluxService
@@ -29,8 +30,8 @@ public class InfluxService : IInfluxService
         _influxOrg = configuration["Influx:Org"] ?? throw new ArgumentException("missing config Influx:Org");
         _influxBucket = configuration["Influx:Bucket"] ?? throw new ArgumentException("missing config Influx:Bucket");
     }
-
-    public async Task<IEnumerable<(DateTime, double)>> GetRawData(DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value)
+    
+    public async Task<IEnumerable<(DateTimeOffset, double)>> GetRawData(DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value)
     {
         var flux = new StringBuilder()
             .AppendLine($"from(bucket: \"{_influxBucket}\")")
@@ -39,29 +40,10 @@ public class InfluxService : IInfluxService
             .AppendLine($"|> filter(fn: (r) => r[\"_field\"] == \"{GetFieldName(value)}\")")
             .ToString();
         
-        using var client = new InfluxDBClient(_influxUrl, _influxToken);
-        var queryApi = client.GetQueryApi();
-        var tables = await queryApi.QueryAsync(flux, _influxOrg);
-
-        int estimatedCount = (int)(end - start).TotalSeconds * 10;
-        var result = new List<(DateTime, double)>(estimatedCount);
-        
-        tables.ForEach(table =>
-        {
-            table.Records.ForEach(record =>
-            {
-                DateTime? time = record.GetTimeInDateTime();
-                object? value = record.GetValueByKey("_value");
-
-                if (time.HasValue && value is double dbl)
-                    result.Add((time.Value, dbl));
-            });
-        });
-
-        return result;
+        return await GetDataFromFluxQuery(flux);
     }
 
-    public async Task<IEnumerable<(DateTime, double)>> GetAggregatedData(DateTimeOffset start, DateTimeOffset end,
+    public async Task<IEnumerable<(DateTimeOffset, double)>> GetAggregatedData(DateTimeOffset start, DateTimeOffset end,
         ToiletSensorValue value)
     {
         var flux = new StringBuilder()
@@ -72,23 +54,32 @@ public class InfluxService : IInfluxService
             .AppendLine($"|> aggregateWindow(every: 1m, fn: mean, createEmpty: false)")
             .AppendLine($"|> yield(name: \"mean\")") // Optional?
             .ToString();
-        
-        using var client = new InfluxDBClient(_influxUrl, _influxToken);
-        var queryApi = client.GetQueryApi();
-        var tables = await queryApi.QueryAsync(flux, _influxOrg);
 
-        int estimatedCount = (int)(end - start).TotalSeconds * 10;
-        var result = new List<(DateTime, double)>(estimatedCount);
+        return await GetDataFromFluxQuery(flux);
+    }
+    
+    private async Task<IEnumerable<(DateTimeOffset, double)>> GetDataFromFluxQuery(string fluxQuery)
+    {
+        using var client = new InfluxDBClient(_influxUrl, _influxToken);
+        
+        var queryApi = client.GetQueryApi();
+        
+        var tables = await queryApi.QueryAsync(fluxQuery, _influxOrg);
+
+        var result = new List<(DateTimeOffset, double)>();
         
         tables.ForEach(table =>
         {
             table.Records.ForEach(record =>
             {
                 DateTime? time = record.GetTimeInDateTime();
-                object? value = record.GetValueByKey("_value");
+                object? val = record.GetValueByKey("_value");
 
-                if (time.HasValue && value is double dbl)
-                    result.Add((time.Value, dbl));
+                if (time.HasValue && val is double dbl)
+                {
+                    Debug.Assert(time.Value.Kind == DateTimeKind.Utc);
+                    result.Add((new DateTimeOffset(time.Value), dbl));
+                }
             });
         });
 

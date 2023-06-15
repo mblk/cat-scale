@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using System.Text
 
 @inject ICatScaleService CatScaleService
 @inject IModalService ModalService
@@ -11,28 +12,159 @@
 }
 </style>
 
-<h3>Toilettengeschichten mit Felix und Filou</h3>
+@if (_cats is null)
+{
+    <p>Loading ...</p>
+}
+else
+{
+    <div>
+        <h3>@_title</h3>
 
-<hr />
-Statistiken:<br />
-<div class="d-inline-flex m-3 mb-0">
-    <EventStatsComponent />
-</div>
+        <hr />
+        Statistiken:<br />
+        <div class="d-inline-flex m-3 mb-0">
+            <EventStatsComponent />
+        </div>
 
-<hr />
-Aktuelle Messungen:<br />
-<img class="cat-graph" src="@CatScaleService.GetCatGraphUri(1)" alt=""/><br />
-<img class="cat-graph" src="@CatScaleService.GetCatGraphUri(2)" alt=""/><br />
-<img class="cat-graph" src="@CatScaleService.GetCombinedCatGraphUri(1, 2, false)" alt=""/><br />
-<img class="cat-graph" src="@CatScaleService.GetCombinedCatGraphUri(1, 2, true)" alt=""/><br />
+        <hr />
+        <div class="d-inline-flex">
+            <div style="width: 100px" class="align-self-center">
+                Zeitraum:
+            </div>
+            <div class="btn-group btn-group-sm mt-1 mb-1" role="group">
+                @foreach (var filter in _timeFilters)
+                {
+                    <button type="button" class="btn btn-sm btn-@(_timeFilter == filter ? "primary" : "secondary")" @onclick="@(() => _timeFilter = filter)">@GetFilterText(filter)</button>
+                }
+            </div>
+        </div>
+        <br />
+        
+        <div class="d-inline-flex">
+            <div style="width: 100px" class="align-self-center">
+                Temperatur:
+            </div>
+            <div class="btn-group btn-group-sm mt-1 mb-1">
+                <button type="button" class="btn btn-sm btn-@(_includeTemperature ? "primary" : "secondary")" @onclick="@(() => _includeTemperature = true)">Anzeigen</button>
+                <button type="button" class="btn btn-sm btn-@(!_includeTemperature ? "primary" : "secondary")" @onclick="@(() => _includeTemperature = false)">Verstecken</button>
+            </div>
+        </div>
+        <br />
+        
+        <hr />
+        Aktuelle Messungen:<br />
+        
+        @foreach (var cat in _cats)
+        {
+            <img class="cat-graph" src="@GetCatGraphUri(cat.Id)" alt=""/><br />
+        }
+        
+        <hr />
+        Gegenüberstellungen:<br />
+        
+        @{
+            var combinations = new List<(int, int)>();
+            for (var i = 0; i < _cats.Length; i++)
+                for (var j = i + 1; j < _cats.Length; j++)
+                    if (_cats[i].Type == CatTypeDto.Active && _cats[j].Type == CatTypeDto.Active)
+                        combinations.Add((_cats[i].Id, _cats[j].Id));
+            
+            foreach (var (catId1,catId2) in combinations)
+            {
+                <img class="cat-graph" src="@GetCombinedCatGraphUri(catId1, catId2, false)" alt=""/><br />
+                <img class="cat-graph" src="@GetCombinedCatGraphUri(catId1, catId2, true)" alt=""/><br />
+            }
+        }
 
-@* <br /> *@
-@* <button class="btn btn-sm btn-primary" @onclick="Test">Test</button> *@
+        @* <br /> *@
+        @* <button class="btn btn-sm btn-primary" @onclick="Test">Test</button> *@
+        
+    </div>
+}
 
 @code
 {
-    protected override void OnInitialized()
+    private CatDto[]? _cats;
+    private string _title = String.Empty;
+
+    private enum TimeFilter { All, Month, Week, Day, }
+    private readonly TimeFilter[] _timeFilters = new[] { TimeFilter.All, TimeFilter.Month, TimeFilter.Week, TimeFilter.Day };
+    private TimeFilter _timeFilter = TimeFilter.All;
+
+    private bool _includeTemperature = true;
+
+    private static string GetFilterText(TimeFilter filter) => filter switch
     {
+        TimeFilter.Month => "Monat",
+        TimeFilter.Week => "Woche",
+        TimeFilter.Day => "Tag",
+        _ => "Alle"
+    };
+    
+    private (DateTimeOffset? minTime, DateTimeOffset? maxTime) GetStartEndTimeFilter()
+    {
+        DateTimeOffset? maxTime = null;
+        DateTimeOffset? minTime = _timeFilter switch
+        {
+            TimeFilter.Month => DateTimeOffset.UtcNow.AddMonths(-1),
+            TimeFilter.Week => DateTimeOffset.UtcNow.AddDays(-7),
+            TimeFilter.Day => DateTimeOffset.UtcNow.AddDays(-1),
+            _ => null,
+        };
+
+        return (minTime, maxTime);
+    }
+
+    private string GetCatGraphUri(int catId)
+    {
+        var (minTime, maxTime) = GetStartEndTimeFilter();
+        return CatScaleService.GetCatGraphUri(catId, minTime, maxTime, _includeTemperature);
+    }
+
+    private string GetCombinedCatGraphUri(int catId1, int catId2, bool sameAxis)
+    {
+        var (minTime, maxTime) = GetStartEndTimeFilter();
+        return CatScaleService.GetCombinedCatGraphUri(catId1, catId2, sameAxis, minTime, maxTime);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            _cats = await CatScaleService.GetAllCats();
+            _title = CreateTitle(_cats);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.ToString());
+        }
+    }
+
+    private static string CreateTitle(CatDto[] cats)
+    {
+        var titleBuilder = new StringBuilder();
+        titleBuilder.Append("Toilettengeschichten");
+            
+        var catNames = cats
+            .Select(c => c.Name)
+            .ToArray();
+
+        if (catNames.Any())
+        {
+            titleBuilder.Append(" mit ");
+            titleBuilder.Append(String.Join(", ", catNames.Take(catNames.Length - 1)));
+            if (catNames.Length > 1)
+                titleBuilder.Append(" und ");
+            titleBuilder.Append(catNames.Last());
+        }
+
+        return titleBuilder.ToString();
     }
 
     // private void Test()

@@ -18,16 +18,20 @@ public class GraphController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetCatMeasurements(int catId)
+    public async Task<IActionResult> GetCatMeasurements(int catId, DateTimeOffset? minTime, DateTimeOffset? maxTime, bool? includeTemperature)
     {
-        var stream = await _graphService.GetCatMeasurementsGraph(catId);
+        _logger.LogInformation(
+            "GetCatMeasurements catId={catId} minTime={minTime} maxTime={maxTime} includeTemperature={includeTemperature}",
+            catId, minTime, maxTime, includeTemperature);
+        
+        var stream = await _graphService.GetCatMeasurementsGraph(catId, minTime, maxTime, includeTemperature ?? false);
         return File(stream, "image/svg+xml");
     }
     
     [HttpGet]
-    public async Task<IActionResult> GetCombinedCatMeasurements(int catId1, int catId2, bool sameAxis)
+    public async Task<IActionResult> GetCombinedCatMeasurements(int catId1, int catId2, bool sameAxis, DateTimeOffset? minTime, DateTimeOffset? maxTime)
     {
-        var stream = await _graphService.GetCombinedCatMeasurementsGraph(catId1, catId2, sameAxis);
+        var stream = await _graphService.GetCombinedCatMeasurementsGraph(catId1, catId2, sameAxis, minTime, maxTime);
         return File(stream, "image/svg+xml");
     }
     

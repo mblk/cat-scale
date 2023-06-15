@@ -10,9 +10,9 @@ namespace CatScale.Service.Services;
 
 public interface IGraphService
 {
-    Task<Stream> GetCatMeasurementsGraph(int catId);
+    Task<Stream> GetCatMeasurementsGraph(int catId, DateTimeOffset? minTime, DateTimeOffset? maxTime, bool includeTemperature);
 
-    Task<Stream> GetCombinedCatMeasurementsGraph(int catId1, int catId2, bool sameAxis);
+    Task<Stream> GetCombinedCatMeasurementsGraph(int catId1, int catId2, bool sameAxis, DateTimeOffset? minTime, DateTimeOffset? maxTime);
     
     Task<Stream> GetToiletGraph(int toiletId, ToiletSensorValue value);
     
@@ -34,62 +34,128 @@ public class GraphService : IGraphService
         _influxService = influxService;
     }
 
-    public async Task<Stream> GetCatMeasurementsGraph(int catId)
+    public async Task<Stream> GetCatMeasurementsGraph(int catId, DateTimeOffset? minTime, DateTimeOffset? maxTime, bool includeTemperature)
     {
-        // TODO create one graph for all cats instead?
-        // TODO include measurements and weights?
-        
         var cat = await _dbContext.Cats
-            .Include(c => c.Measurements)
-            .Include(c => c.Weights)
-            .SingleOrDefaultAsync(c => c.Id == catId)
-            ?? throw new ArgumentException("Cat does not exist");
-
-        var measurements = cat.Measurements
-            .OrderBy(m => m.Timestamp)
-            .ToArray();
+                      .AsNoTracking()
+                      .SingleOrDefaultAsync(c => c.Id == catId)
+                  ?? throw new ArgumentException("Cat does not exist");
         
-        var minTimestamp = measurements.Min(m => m.Timestamp);
-        var maxTimestamp = measurements.Max(m => m.Timestamp);
-        var minWeight = measurements.Min(m => m.CatWeight);
-        var maxWeight = measurements.Max(m => m.CatWeight);
+        if (includeTemperature)
+        {
+            var measurementsWithTemperature = _dbContext.ScaleEvents
+                .AsNoTracking()
+                .Where(e => minTime == null || e.StartTime >= minTime)
+                .Where(e => maxTime == null || e.EndTime <= maxTime)
+                .Include(e => e.Measurement)
+                .Where(e => e.Measurement != null)
+                .Where(e => e.Measurement!.CatId == catId)
+                .OrderBy(e => e.Measurement!.Timestamp)
+                .ToArray()
+                .Select(e => (e.Measurement!.Timestamp, e.Measurement.CatWeight, e.Temperature))
+                .ToArray();
 
-        var inputFile = $"temp/cat-{catId}.csv";
-        var outputFile = $"temp/cat-{catId}.svg";
-        var gnuplotFile = $"temp/cat-{catId}.gnuplot";
+            var weightData = measurementsWithTemperature
+                .Select(m => (m.Timestamp, m.CatWeight))
+                .ToArray();
 
-        string csvData = ConvertMeasurementsToCsv(measurements);
-        string gnuplotConfig = CreateGnuplotConfigSimpleGraph(minTimestamp, maxTimestamp, minWeight, maxWeight, inputFile, outputFile, cat.Name);
+            var temperatureData = measurementsWithTemperature
+                .Where(m => m.Temperature != 0d)
+                .Select(m => (m.Timestamp, m.Temperature))
+                .ToArray();
+            
+            var minTimestamp = weightData.Min(m => m.Timestamp);
+            var maxTimestamp = weightData.Max(m => m.Timestamp);
+            var minWeight = weightData.Min(m => m.CatWeight);
+            var maxWeight = weightData.Max(m => m.CatWeight);
+            var minTemperature = temperatureData.Min(m => m.Temperature);
+            var maxTemperature = temperatureData.Max(m => m.Temperature);
 
-        if (!Directory.Exists("temp"))
-            Directory.CreateDirectory("temp");
-        
-        await File.WriteAllTextAsync(inputFile, csvData);
-        await File.WriteAllTextAsync(gnuplotFile, gnuplotConfig);
-        await Process.Start("gnuplot", gnuplotFile).WaitForExitAsync();
+            var inputFile1 = $"temp/cat-{catId}-1.csv";
+            var inputFile2 = $"temp/cat-{catId}-2.csv";
+            var outputFile = $"temp/cat-{catId}.svg";
+            var gnuplotFile = $"temp/cat-{catId}.gnuplot";
 
-        return File.OpenRead(outputFile);
+            string csvData1 = ConvertDateTimeOffsetDoubleToCsv(weightData);
+            string csvData2 = ConvertDateTimeOffsetDoubleToCsv(temperatureData);
+            string gnuplotConfig = CreateGnuplotConfigCombinedGraph(minTimestamp, maxTimestamp, minWeight, maxWeight,
+                minTemperature, maxTemperature, inputFile1, inputFile2, outputFile, cat.Name, "Temperature");
+
+            if (!Directory.Exists("temp"))
+                Directory.CreateDirectory("temp");
+            
+            await File.WriteAllTextAsync(inputFile1, csvData1);
+            await File.WriteAllTextAsync(inputFile2, csvData2);
+            await File.WriteAllTextAsync(gnuplotFile, gnuplotConfig);
+            await Process.Start("gnuplot", gnuplotFile).WaitForExitAsync();
+
+            return File.OpenRead(outputFile);
+        }
+        else
+        {
+            var measurements = _dbContext.ScaleEvents
+                .AsNoTracking()
+                .Where(e => minTime == null || e.StartTime >= minTime)
+                .Where(e => maxTime == null || e.EndTime <= maxTime)
+                .Include(e => e.Measurement)
+                .Where(e => e.Measurement != null)
+                .Where(e => e.Measurement!.CatId == catId)
+                .OrderBy(e => e.Measurement!.Timestamp)
+                .ToArray()
+                .Select(e => (e.Measurement!.Timestamp, e.Measurement.CatWeight))
+                .ToArray();
+
+            var weightData = measurements
+                .Select(m => (m.Timestamp, m.CatWeight))
+                .ToArray();
+
+            var minTimestamp = weightData.Min(m => m.Timestamp);
+            var maxTimestamp = weightData.Max(m => m.Timestamp);
+            var minWeight = weightData.Min(m => m.CatWeight);
+            var maxWeight = weightData.Max(m => m.CatWeight);
+
+            var inputFile1 = $"temp/cat-{catId}-3.csv";
+            var outputFile = $"temp/cat-{catId}.svg";
+            var gnuplotFile = $"temp/cat-{catId}.gnuplot";
+
+            string csvData1 = ConvertDateTimeOffsetDoubleToCsv(weightData);
+            string gnuplotConfig = CreateGnuplotConfigSimpleGraph(minTimestamp, maxTimestamp,
+                minWeight, maxWeight, inputFile1, outputFile, cat.Name);
+
+            if (!Directory.Exists("temp"))
+                Directory.CreateDirectory("temp");
+            
+            await File.WriteAllTextAsync(inputFile1, csvData1);
+            await File.WriteAllTextAsync(gnuplotFile, gnuplotConfig);
+            await Process.Start("gnuplot", gnuplotFile).WaitForExitAsync();
+
+            return File.OpenRead(outputFile);
+        }
     }
     
-    public async Task<Stream> GetCombinedCatMeasurementsGraph(int catId1, int catId2, bool sameAxis)
+    public async Task<Stream> GetCombinedCatMeasurementsGraph(int catId1, int catId2, bool sameAxis, DateTimeOffset? minTime, DateTimeOffset? maxTime)
     {
-        // TODO include measurements and weights?
-        
         var cat1 = await _dbContext.Cats
+                       .AsNoTracking()
                       .Include(c => c.Measurements)
                       .Include(c => c.Weights)
                       .SingleOrDefaultAsync(c => c.Id == catId1)
                   ?? throw new ArgumentException("Cat1 does not exist");
         var cat2 = await _dbContext.Cats
+                       .AsNoTracking()
                        .Include(c => c.Measurements)
                        .Include(c => c.Weights)
                        .SingleOrDefaultAsync(c => c.Id == catId2)
                    ?? throw new ArgumentException("Cat2 does not exist");
 
         var measurements1 = cat1.Measurements
+            .Where(m => minTime == null || m.Timestamp >= minTime)
+            .Where(m => maxTime == null || m.Timestamp <= maxTime)
             .OrderBy(m => m.Timestamp)
             .ToArray();
         var measurements2 = cat2.Measurements
+            .Where(m => minTime == null || m.Timestamp >= minTime)
+            .Where(m => maxTime == null || m.Timestamp <= maxTime)
             .OrderBy(m => m.Timestamp)
             .ToArray();
 
@@ -151,7 +217,7 @@ public class GraphService : IGraphService
         var outputFile = $"temp/toilet-{toiletId}-{value}.svg";
         var gnuplotFile = $"temp/toilet-{toiletId}-{value}.gnuplot";
 
-        string csvData = ConvertDateTimeDoubleToCsv(data);
+        string csvData = ConvertDateTimeOffsetDoubleToCsv(data);
         string gnuplotConfig = CreateGnuplotConfigSimpleGraph(startTime, endTime, minValue, maxValue, inputFile,
             outputFile, value.ToString());
 
@@ -185,8 +251,8 @@ public class GraphService : IGraphService
         var outputFile = $"{filePrefix}.svg";
         var gnuplotFile = $"{filePrefix}.gnuplot";
 
-        string csvData1 = ConvertDateTimeDoubleToCsv(data1);
-        string csvData2 = ConvertDateTimeDoubleToCsv(data2);
+        string csvData1 = ConvertDateTimeOffsetDoubleToCsv(data1);
+        string csvData2 = ConvertDateTimeOffsetDoubleToCsv(data2);
         
         string gnuplotConfig = CreateGnuplotConfigCombinedGraph(startTime, endTime, minValue1, maxValue1, minValue2,
             maxValue2, inputFile1, inputFile2, outputFile, value1.ToString(), value2.ToString());
@@ -222,7 +288,7 @@ public class GraphService : IGraphService
         var configFileName = $"temp/data-{scaleEventId}.gnuplot";
         var outputFileName = $"temp/data-{scaleEventId}.svg";
         
-        string csvData = ConvertDateTimeDoubleToCsv(weightData);
+        string csvData = ConvertDateTimeOffsetDoubleToCsv(weightData);
         string gnuplotConfig = CreateGnuplotConfigForScaleEvent(startTime, endTime, minValue, maxValue, scaleEvent, dataFileName, outputFileName);
         
         if (!Directory.Exists("temp"))
@@ -259,9 +325,7 @@ public class GraphService : IGraphService
     
     private static string CreateGnuplotConfigCombinedGraph(DateTimeOffset start, DateTimeOffset end,
         double minValue1, double maxValue1, double minValue2, double maxValue2,
-        string inputFile1, string inputFile2,
-        string outputFile,
-        string name1, string name2)
+        string inputFile1, string inputFile2, string outputFile, string name1, string name2)
     {
         var timeRange = end - start;
         string xFormat = timeRange.TotalDays > 1.5 ? "%d.%m" : "%H:%M";
@@ -291,11 +355,9 @@ public class GraphService : IGraphService
             .ToString();
     }
     
-    private static string CreateGnuplotConfigForScaleEvent(DateTimeOffset start, DateTimeOffset end, double minValue, double maxValue, ScaleEvent scaleEvent, string dataFileName, string outputFileName)
+    private static string CreateGnuplotConfigForScaleEvent(DateTimeOffset start, DateTimeOffset end,
+        double minValue, double maxValue, ScaleEvent scaleEvent, string dataFileName, string outputFileName)
     {
-        // TODO font?
-        // TODO output as pdf or postscript ?
-        
         int nextObjId = 1;
         
         var sb = new StringBuilder()
@@ -345,12 +407,12 @@ public class GraphService : IGraphService
         return sb.ToString();
     }
 
-    private static string ConvertDateTimeDoubleToCsv(IEnumerable<(DateTime, double)> data)
+    private static string ConvertDateTimeOffsetDoubleToCsv(IEnumerable<(DateTimeOffset, double)> data)
     {
         var sb = new StringBuilder();
 
         foreach (var (time, value) in data)
-            sb.AppendLine($"{ConvertDateTimeToString(time)},{ConvertDoubleToString(value)}");
+            sb.AppendLine($"{ConvertDateTimeOffsetToString(time)},{ConvertDoubleToString(value)}");
         
         return sb.ToString();
     }
@@ -358,9 +420,14 @@ public class GraphService : IGraphService
     private static string ConvertMeasurementsToCsv(IEnumerable<Measurement> measurements)
     {
         var sb = new StringBuilder();
-        
+
         foreach (var m in measurements)
-            sb.AppendLine($"{ConvertDateTimeOffsetToString(m.Timestamp)},{ConvertDoubleToString(m.CatWeight)}");
+        {
+            sb.Append(ConvertDateTimeOffsetToString(m.Timestamp))
+                .Append(",")
+                .Append(ConvertDoubleToString(m.CatWeight))
+                .AppendLine();
+        }
         
         return sb.ToString();
     }
@@ -370,11 +437,6 @@ public class GraphService : IGraphService
         return value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
     }
     
-    private static string ConvertDateTimeToString(DateTime value)
-    {
-        return value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
-    }
-
     private static string ConvertDoubleToString(double value)
     {
         return value.ToString("F2", CultureInfo.InvariantCulture);

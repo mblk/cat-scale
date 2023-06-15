@@ -75,8 +75,9 @@ public class CatController : ControllerBase
         
         _logger.LogInformation($"Creating new cat: {request}");
         
-        var newCat = new Cat()
+        var newCat = new Cat
         {
+            Type = DataMapper.MapCatType(request.Type),
             Name = name,
             DateOfBirth = request.DateOfBirth,
         };
@@ -117,7 +118,8 @@ public class CatController : ControllerBase
         }
         
         _logger.LogInformation($"Updating cat: {request}");
-        
+
+        existingCat.Type = DataMapper.MapCatType(request.Type);
         existingCat.Name = name;
         existingCat.DateOfBirth = request.DateOfBirth;
 

@@ -1,6 +1,16 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿<style>
+    .fa-nav-icon {
+        width: 40px;
+        text-align: center;
+    }
+</style>
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href=""><span class="oi oi-heart" aria-hidden="true"></span>Cathub</a>
+        <a class="navbar-brand" href="">
+            <i class="fa-nav-icon fa-solid fa-shield-cat fa-xl"></i> Cathub
+        </a>
+        
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -12,25 +22,37 @@
         
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="oi oi-home" aria-hidden="true"></span>Home
+                <i class="fa-nav-icon fa-solid fa-house fa-xl"></i> Home
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="timeline" Match="NavLinkMatch.Prefix">
-                <span class="oi oi-clock" aria-hidden="true"></span> Timeline
+                <i class="fa-nav-icon fa-solid fa-timeline fa-xl"></i> Timeline
             </NavLink>
         </div>
         
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="toilets" Match="NavLinkMatch.Prefix">
-                <span class="oi oi-box" aria-hidden="true"></span> Toiletten
+                <i class="fa-nav-icon fa-solid fa-toilet-paper fa-xl"></i> Toiletten
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="cats" Match="NavLinkMatch.Prefix">
-                <span class="oi oi-eye" aria-hidden="true"></span> Katzen
+                <span class="fa-nav-icon fa-solid fa-cat fa-xl"></span> Katzen
+            </NavLink>
+        </div>
+        
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="food" Match="NavLinkMatch.Prefix">
+                <i class="fa-nav-icon fa-solid fa-cookie fa-xl"></i> Futter
+            </NavLink>
+        </div>
+        
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="feeding" Match="NavLinkMatch.Prefix">
+                <i class="fa-nav-icon fa-solid fa-cookie-bite fa-xl"></i> Fütterungen
             </NavLink>
         </div>
 
@@ -38,7 +60,7 @@
             <Authorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="settings">
-                        <span class="oi oi-cog" aria-hidden="true"></span> Einstellungen
+                        <i class="fa-nav-icon fa-solid fa-gear fa-xl"></i> Einstellungen
                     </NavLink>
                 </div>
             </Authorized>
@@ -48,7 +70,7 @@
             <Authorized>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="apikeys">
-                        <span class="oi oi-key" aria-hidden="true"></span> Api Keys
+                        <i class="fa-nav-icon fa-solid fa-key fa-xl"></i> Api Keys
                     </NavLink>
                 </div>
             </Authorized>
@@ -56,7 +78,7 @@
         
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="about" Match="NavLinkMatch.Prefix">
-                <span class="oi oi-eye" aria-hidden="true"></span> Über
+                <i class="fa-nav-icon fa-solid fa-signal fa-xl"></i> Über
             </NavLink>
         </div>
 

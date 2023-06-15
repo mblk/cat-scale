@@ -5,10 +5,8 @@ public class Measurement
     public int Id { get; set; }
     
     public int CatId { get; set; }
-    //public Cat Cat { get; set; } = null!;
     
     public int ScaleEventId { get; set; }
-    //public ScaleEvent ScaleEvent { get; set; } = null!;
 
     public DateTimeOffset Timestamp { get; set; }
     

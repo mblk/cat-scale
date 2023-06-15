@@ -39,6 +39,24 @@ else
                 <td class="col-3">@_cat.Id</td>
             </tr>
             <tr>
+                <td class="col-3">Typ</td>
+                <td>
+                    @if (_editMode)
+                    {
+                        <InputSelect @bind-Value="@_editType" class="form-control dropdown-toggle">
+                            @foreach (var catType in Enum.GetValues<CatTypeDto>())
+                            {
+                                <option value="@catType.ToString()">@catType.ToString()</option>
+                            }
+                        </InputSelect>
+                    }
+                    else
+                    {
+                        @_cat.Type
+                    }
+                </td>
+            </tr>
+            <tr>
                 <td>Name</td>
                 <td>
                     @if (_editMode)
@@ -141,6 +159,7 @@ else
     private CatWeightDto[]? _weights;
 
     private bool _editMode;
+    private CatTypeDto _editType;
     private string? _editName;
     private DateOnly _editDateOfBirth;
 
@@ -173,6 +192,7 @@ else
         if (_cat is null) return;
 
         _editMode = true;
+        _editType = _cat.Type;
         _editName = _cat.Name;
         _editDateOfBirth = _cat.DateOfBirth;
     }
@@ -185,7 +205,7 @@ else
             _editDateOfBirth.ToDateTime(TimeOnly.MinValue) > DateTime.Now)
             return;
 
-        await CatScaleService.UpdateCat(_cat.Id, _editName, _editDateOfBirth);
+        await CatScaleService.UpdateCat(_cat.Id, _editType, _editName, _editDateOfBirth);
         await LoadData();
     }
 

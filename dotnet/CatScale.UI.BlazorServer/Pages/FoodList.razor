@@ -1,0 +1,102 @@
+@page "/food"
+
+@using CatScale.Service.Model.Food
+
+@inject ICatScaleService CatScaleService
+@inject NavigationManager NavigationManager
+
+<h3>Futter</h3>
+
+@if (_foods is null)
+{
+    <p>Loading ...</p>
+}
+else
+{
+    <AuthorizeView>
+        <Authorized>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-sm btn-secondary" @onclick="@LoadData">Liste aktualisieren</button>
+                <button class="btn btn-sm btn-primary" @onclick="@CreateFood">Neues Futter anlegen</button>
+            </div>
+            <br/>
+            <br/>
+        </Authorized>
+    </AuthorizeView>
+    
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Id</th>
+            <th>Marke</th>
+            <th>Name</th>
+            <th>Kalorien</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var food in _foods)
+        {
+            <tr>
+                <td>@food.Id</td>
+                <td>@food.Brand</td>
+                <td>@food.Name</td>
+                <td>@food.CaloriesPerGram</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-sm btn-primary" @onclick="@(() => Open(food))">Details</button>
+                        <AuthorizeView>
+                            <Authorized>
+                                <button class="btn btn-sm btn-danger" @onclick="@(() => Delete(food))">Löschen</button>
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    
+    private FoodDto[]? _foods;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+    
+    private async Task LoadData()
+    {
+        try
+        {
+            _foods = await CatScaleService.GetAllFoods();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+    
+    private async Task CreateFood()
+    {
+        await CatScaleService.CreateFood(
+            $"Brand-{Random.Shared.Next() % 1000}",
+            $"Name-{Random.Shared.Next() % 1000}",
+            100.0);
+        await LoadData();
+    }
+
+    private void Open(FoodDto food)
+    {
+        NavigationManager.NavigateTo($"food/{food.Id}");
+    }
+
+    private async Task Delete(FoodDto food)
+    {
+        await CatScaleService.DeleteFood(food.Id);
+        await LoadData();
+    }
+}

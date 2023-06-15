@@ -2,6 +2,7 @@ using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using CatScale.Service.Model.Cat;
 using CatScale.Service.Model.Cleaning;
+using CatScale.Service.Model.Food;
 using CatScale.Service.Model.Measurement;
 using CatScale.Service.Model.ScaleEvent;
 using CatScale.Service.Model.Toilet;
@@ -18,12 +19,20 @@ public static partial class DataMapper
     public static partial CatWeightDto MapCatWeight(CatWeight catWeight);
     public static partial MeasurementDto MapMeasurement(Measurement measurement);
     public static partial CleaningDto MapCleaning(Cleaning cleaning);
+    public static partial FoodDto MapFood(Food food);
+    public static partial FeedingDto MapFeeding(Feeding feeding);
     
+    // Enums
+    public static partial CatTypeDto MapCatType(CatType catType);
+    public static partial CatType MapCatType(CatTypeDto catType);
 
-    
-    
+
     //public partial ApplicationUserDto MapApplicationUser(ApplicationUser user);
     //public partial UserApiKeyDto MapUserApiKey(UserApiKey apiKey);
+
+    //
+    // Custom mappers for entities which Mapperly fails to map:
+    //
 
     public static UserApiKeyDto MapUserApiKey(UserApiKey apiKey)
     {

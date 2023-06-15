@@ -1,5 +1,7 @@
+using System.Text;
 using System.Text.Json;
 using CatScale.Service.Model.Cat;
+using CatScale.Service.Model.Food;
 using CatScale.Service.Model.Measurement;
 using CatScale.Service.Model.ScaleEvent;
 using CatScale.Service.Model.Toilet;
@@ -7,7 +9,7 @@ using CatScale.Service.Model.User;
 
 namespace CatScale.UI.BlazorServer.Services;
 
-public interface ICatScaleService // TODO split up
+public interface ICatScaleService // TODO split up?
 {
     //
     // Toilet
@@ -22,8 +24,8 @@ public interface ICatScaleService // TODO split up
 
     Task<CatDto[]> GetAllCats();
     Task<CatDto> GetCat(int id);
-    Task<CatDto> CreateCat(string name, DateOnly dateOfBirth);
-    Task<CatDto> UpdateCat(int id, string name, DateOnly dateOfBirth);
+    Task<CatDto> CreateCat(CatTypeDto type, string name, DateOnly dateOfBirth);
+    Task<CatDto> UpdateCat(int id, CatTypeDto type, string name, DateOnly dateOfBirth);
     Task DeleteCat(int id);
 
     Task<CatWeightDto[]> GetCatWeights(int catId);
@@ -46,12 +48,31 @@ public interface ICatScaleService // TODO split up
     Task<PooCount[]> GetPooCounts();
 
     //
+    // Food
+    //
+
+    Task<FoodDto[]> GetAllFoods();
+    Task<FoodDto> GetOneFood(int id);
+    Task<FoodDto> CreateFood(string brand, string name, double caloriesPerGram);
+    Task<FoodDto> UpdateFood(int id, string brand, string name, double caloriesPerGram);
+    Task DeleteFood(int id);
+    
+    //
+    // Feeding
+    //
+
+    Task<FeedingDto[]> GetAllFeedings();
+    Task<FeedingDto> GetOneFeeding(int id);
+    Task<FeedingDto> CreateFeeding(int catId, int foodId, DateTimeOffset timestamp, double offered, double eaten);
+    Task DeleteFeeding(int id);
+    
+    //
     // Graphs
     //
     
     string GetScaleEventGraphUri(int id);
-    string GetCatGraphUri(int id);
-    string GetCombinedCatGraphUri(int id1, int id2, bool sameAxis);
+    string GetCatGraphUri(int id, DateTimeOffset? minTime, DateTimeOffset? maxTime, bool includeTemperature);
+    string GetCombinedCatGraphUri(int id1, int id2, bool sameAxis, DateTimeOffset? minTime, DateTimeOffset? maxTime);
     string GetToiletGraphUri(int id, ToiletSensorValue sensorValue);
     string GetCombinedToiletGraphUri(int id, ToiletSensorValue sensorValue1, ToiletSensorValue sensorValue2);
     
@@ -91,7 +112,6 @@ public class CatScaleService : ICatScaleService
         => await _httpClient.GetFromJsonAsync<ToiletDto[]>("api/Toilet/GetAll") ??
            throw new JsonException("Failed to deserialize response");
 
-
     public async Task<ToiletDto> GetToiletDetails(int id)
         => await _httpClient.GetFromJsonAsync<ToiletDto>($"api/Toilet/GetOne/{id}") ??
            throw new JsonException("Failed to deserialize response");
@@ -108,20 +128,20 @@ public class CatScaleService : ICatScaleService
         => await _httpClient.GetFromJsonAsync<CatDto>($"api/Cat/GetOne/{id}") ??
            throw new JsonException("Failed to deserialize response");
 
-    public async Task<CatDto> CreateCat(string name, DateOnly dateOfBirth)
+    public async Task<CatDto> CreateCat(CatTypeDto type, string name, DateOnly dateOfBirth)
     {
         var response = (await _httpClient.PutAsJsonAsync("api/Cat/Create",
-                new CreateCatRequest(name, dateOfBirth)))
+                new CreateCatRequest(type, name, dateOfBirth)))
             .EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<CatDto>() ??
                throw new JsonException("Failed to deserialize response");
     }
 
-    public async Task<CatDto> UpdateCat(int id, string name, DateOnly dateOfBirth)
+    public async Task<CatDto> UpdateCat(int id, CatTypeDto type, string name, DateOnly dateOfBirth)
     {
         var response = (await _httpClient.PostAsJsonAsync($"api/Cat/Update/{id}",
-                new UpdateCatRequest(name, dateOfBirth)))
+                new UpdateCatRequest(type, name, dateOfBirth)))
             .EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<CatDto>() ??
@@ -187,6 +207,68 @@ public class CatScaleService : ICatScaleService
            throw new JsonException("Failed to deserialize response");
 
     //
+    // Food
+    //
+    
+    public async Task<FoodDto[]> GetAllFoods()
+        => await _httpClient.GetFromJsonAsync<FoodDto[]>($"api/Food/GetAll") ??
+           throw new JsonException("Failed to deserialize response");
+    
+    public async Task<FoodDto> GetOneFood(int id)
+        => await _httpClient.GetFromJsonAsync<FoodDto>($"api/Food/GetOne/{id}") ??
+           throw new JsonException("Failed to deserialize response");
+    
+    public async Task<FoodDto> CreateFood(string brand, string name, double caloriesPerGram)
+    {
+        var response = (await _httpClient.PutAsJsonAsync("api/Food/Create",
+                new CreateFoodRequest(brand, name, caloriesPerGram)))
+            .EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<FoodDto>() ??
+               throw new JsonException("Failed to deserialize response");
+    }
+    
+    public async Task<FoodDto> UpdateFood(int id, string brand, string name, double caloriesPerGram)
+    {
+        var response = (await _httpClient.PostAsJsonAsync($"api/Food/Update/{id}",
+                new UpdateFoodRequest(id, brand, name, caloriesPerGram)))
+            .EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<FoodDto>() ??
+               throw new JsonException("Failed to deserialize response");
+    }
+    
+    public async Task DeleteFood(int id)
+        => (await _httpClient.DeleteAsync($"api/Food/Delete/{id}"))
+            .EnsureSuccessStatusCode();
+    
+    //
+    // Feeding
+    //
+
+    public async Task<FeedingDto[]> GetAllFeedings()
+        => await _httpClient.GetFromJsonAsync<FeedingDto[]>($"api/Feeding/GetAll") ??
+           throw new JsonException("Failed to deserialize response");
+    
+    public async Task<FeedingDto> GetOneFeeding(int id)
+        => await _httpClient.GetFromJsonAsync<FeedingDto>($"api/Feeding/GetOne/{id}") ??
+           throw new JsonException("Failed to deserialize response");
+
+    public async Task<FeedingDto> CreateFeeding(int catId, int foodId, DateTimeOffset timestamp, double offered, double eaten)
+    {
+        var response = (await _httpClient.PutAsJsonAsync("api/Cat/Create",
+                new CreateFeedingRequest(catId, foodId, timestamp, offered, eaten)))
+            .EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<FeedingDto>() ??
+               throw new JsonException("Failed to deserialize response");
+    }
+    
+    public async Task DeleteFeeding(int id)
+        => (await _httpClient.DeleteAsync($"api/Feeding/Delete/{id}"))
+            .EnsureSuccessStatusCode();
+    
+    //
     // Graphs
     //
 
@@ -211,19 +293,36 @@ public class CatScaleService : ICatScaleService
         }
     }
 
+    private static string AddTimeFilterToPath(string path, DateTimeOffset? minTime, DateTimeOffset? maxTime)
+    {
+        const string format = "yyyy-MM-ddTHH:mm:ssZ";
+        
+        var pathBuilder = new StringBuilder(path);
+
+        if (minTime != null)
+            pathBuilder.Append($"&minTime={minTime.Value.ToString(format)}");
+        
+        if (maxTime != null)
+            pathBuilder.Append($"&maxTime={maxTime.Value.ToString(format)}");
+
+        return pathBuilder.ToString();
+    }
+
     public string GetScaleEventGraphUri(int id)
     {
         return GetGraphUri($"api/Graph/GetScaleEvent?scaleEventId={id}");
     }
 
-    public string GetCatGraphUri(int id)
+    public string GetCatGraphUri(int id, DateTimeOffset? minTime, DateTimeOffset? maxTime, bool includeTemperature)
     {
-        return GetGraphUri($"api/Graph/GetCatMeasurements?catId={id}");
+        var path = AddTimeFilterToPath($"api/Graph/GetCatMeasurements?catId={id}", minTime, maxTime);
+        path += $"&includeTemperature={includeTemperature}";
+        return GetGraphUri(path);
     }
 
-    public string GetCombinedCatGraphUri(int id1, int id2, bool sameAxis)
+    public string GetCombinedCatGraphUri(int id1, int id2, bool sameAxis, DateTimeOffset? minTime, DateTimeOffset? maxTime)
     {
-        return GetGraphUri($"api/Graph/GetCombinedCatMeasurements?catId1={id1}&catId2={id2}&sameAxis={sameAxis}");
+        return GetGraphUri(AddTimeFilterToPath($"api/Graph/GetCombinedCatMeasurements?catId1={id1}&catId2={id2}&sameAxis={sameAxis}", minTime, maxTime));
     }
     
     public string GetToiletGraphUri(int id, ToiletSensorValue sensorValue)

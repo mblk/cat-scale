@@ -40,19 +40,19 @@
     }
     else
     {
-        @foreach (var count in _pooCounts)
+        @foreach (var pooCount in _pooCounts)
         {
             <div class="position-relative me-2 poo-count">
 
                 <div style="font-size: 32px">💩</div>
 
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill" 
-                      style="background-color: @GetNotificationColor(@count.Count)">
-                    @count.Count
+                      style="background-color: @GetNotificationColor(pooCount)">
+                    @pooCount.Count
                 </span>
                 
                 <span class="poo-count-tooltip">
-                    @GetNotificationText(count)
+                    @GetNotificationText(pooCount)
                 </span>
                 
             </div>
@@ -63,15 +63,20 @@
 
 @code {
 
-    private string GetNotificationColor(int count) 
-        => count switch { 0 => "green", 1 => "orange", _ => "red" };
+    private string GetNotificationColor(PooCount pooCount) 
+        => pooCount.Count switch
+        {
+            0       => "green",
+            <= 3    => "orange",
+            _       => "red"
+        };
 
     private string GetNotificationText(PooCount pooCount)
         => pooCount.Count switch
         {
-            0 => $"Katzenklo {pooCount.ToiletId} ist sauber.",
-            1 => $"Katzenklo {pooCount.ToiletId} sollte bald gereinigt werden.",
-            _ => $"Katzenklo {pooCount.ToiletId} muss gereinigt werden.",
+            0       => $"Katzenklo {pooCount.ToiletId} ist sauber.",
+            <= 3    => $"Katzenklo {pooCount.ToiletId} sollte bald gereinigt werden.",
+            _       => $"Katzenklo {pooCount.ToiletId} muss gereinigt werden.",
         };
 
     private PooCount[]? _pooCounts;

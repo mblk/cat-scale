@@ -13,6 +13,8 @@ public class CatScaleContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<StablePhase> StablePhases { get; set; } = null!;
     public DbSet<Measurement> Measurements { get; set; } = null!;
     public DbSet<Cleaning> Cleanings { get; set; } = null!;
+    public DbSet<Food> Foods { get; set; } = null!;
+    public DbSet<Feeding> Feedings { get; set; } = null!;
 
     public DbSet<UserApiKey> UserApiKeys { get; set; } = null!;
 

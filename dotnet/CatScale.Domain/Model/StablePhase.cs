@@ -5,7 +5,6 @@ public class StablePhase
     public int Id { get; set; }
 
     public int ScaleEventId { get; set; }
-    //public ScaleEvent ScaleEvent { get; set; } = null!;
     
     public DateTimeOffset Timestamp { get; set; }
     

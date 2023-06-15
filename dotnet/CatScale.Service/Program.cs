@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using CatScale.Service.Authentication;
 using CatScale.Service.DbModel;
+using CatScale.Service.Repositories;
 using CatScale.Service.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -53,9 +54,6 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
-// builder.Services.AddScoped<IJwtService, JwtService>();
-
-
  builder.Services
      .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
      //.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -84,6 +82,9 @@ builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
 builder.Services.AddScoped<IClassificationService, ClassificationService>();
 builder.Services.AddScoped<IInfluxService, InfluxService>();
 builder.Services.AddScoped<IGraphService, GraphService>();
+
+builder.Services.AddScoped<IRepositoryWrapper, RepositoryWrapper>(); // One Instance per Http-Request
+
 
 var app = builder.Build();
 

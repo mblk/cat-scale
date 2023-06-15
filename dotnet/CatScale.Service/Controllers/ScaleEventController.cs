@@ -288,6 +288,11 @@ public class ScaleEventController : ControllerBase
     [HttpGet]
     public ActionResult<PooCount[]> GetPooCounts()
     {
+        var activeCats = _dbContext.Cats
+            .Where(c => c.Type == CatType.Active)
+            .Select(c => c.Id)
+            .ToArray();
+        
         var result = new List<PooCount>();
 
         var toilets = _dbContext.Toilets
@@ -307,8 +312,11 @@ public class ScaleEventController : ControllerBase
                                    ?? DateTimeOffset.MinValue;
 
             var numMeasurementsSinceLastCleaning = toilet.ScaleEvents
-                .Where(e => e.StartTime > lastCleaningTime)
-                .Count(e => e.Measurement != null);
+                .Count(e =>
+                    e.StartTime > lastCleaningTime &&
+                    e.Measurement != null &&
+                    activeCats.Contains(e.Measurement.CatId // TODO check how this translates to sql
+                ));
 
             result.Add(new PooCount(toilet.Id, numMeasurementsSinceLastCleaning));
         }

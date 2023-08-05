@@ -48,7 +48,8 @@ else
                                 <div class="alert alert-success m-0 p-2 ms-1" role="alert">
                                     Messung
                                     (@_cats.Single(c => c.Id == vm.ScaleEvent.Measurement.CatId).Name,
-                                    @vm.ScaleEvent.Measurement.CatWeight.ToString("F0")g)
+                                    @vm.ScaleEvent.Measurement.CatWeight.ToString("F0")g,
+                                    @vm.ScaleEvent.Measurement.PooWeight.ToString("F0")g)
                                 </div>
                             }
                             if (unknown)

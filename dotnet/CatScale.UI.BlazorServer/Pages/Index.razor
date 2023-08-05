@@ -92,7 +92,7 @@ else
     private readonly TimeFilter[] _timeFilters = new[] { TimeFilter.All, TimeFilter.Month, TimeFilter.Week, TimeFilter.Day };
     private TimeFilter _timeFilter = TimeFilter.All;
 
-    private bool _includeTemperature = true;
+    private bool _includeTemperature = false;
 
     private static string GetFilterText(TimeFilter filter) => filter switch
     {

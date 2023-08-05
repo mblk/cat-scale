@@ -1,6 +1,7 @@
 @page "/ApiKeys"
 
 @inject ICatScaleService CatScaleService
+@inject ClipboardService ClipboardService
 
 <h3>ApiKeys</h3>
 
@@ -29,10 +30,11 @@ else
         {
             <tr>
                 <td>@apiKey.Id</td>
-                <td>@apiKey.Value</td>
+                <td style="user-select: all">@apiKey.Value</td>
                 <td>@apiKey.ExpirationDate</td>
                 <td>
-                    <button class="btn btn-sm btn-primary" @onclick="@(_ => DeleteKey(apiKey.Id))">Delete</button>
+                    <button class="btn btn-sm btn-primary" @onclick="@(_ => CopyToClipboard(apiKey.Value))">Copy</button>
+                    <button class="btn btn-sm btn-danger" @onclick="@(_ => DeleteKey(apiKey.Id))">Delete</button>
                 </td>
             </tr>
         }
@@ -81,6 +83,18 @@ else
         {
             await CatScaleService.CreateApiKey(null);
             await Refresh();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+
+    private async Task CopyToClipboard(string apiKey)
+    {
+        try
+        {
+            await ClipboardService.WriteText(apiKey);
         }
         catch (Exception e)
         {

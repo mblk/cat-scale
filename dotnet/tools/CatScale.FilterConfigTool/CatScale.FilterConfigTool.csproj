@@ -11,8 +11,4 @@
     <PackageReference Include="InfluxDB.Client" Version="4.13.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\CatScale.Service.Model\CatScale.Service.Model.csproj" />
-  </ItemGroup>
-
 </Project>

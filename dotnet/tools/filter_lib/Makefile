@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-c -Wall -Werror -fpic -I ./src/
+CFLAGS=-c -Wall -Werror -fpic -I ./src/ -DDEBUG_FILTER_CASCADE
 
 LD=gcc
 LDFLAGS=-shared
@@ -13,3 +13,5 @@ all:
 	$(LD) $(LDFLAGS) bin/*.o -o bin/filter_lib.so
 	-cp bin/filter_lib.so ../CatScale.ReprocessTool/bin/Debug/net7.0/
 	-cp bin/filter_lib.so ../CatScale.ReprocessTool/bin/Release/net7.0/
+	-cp bin/filter_lib.so ../CatScale.FilterConfigTool/bin/Debug/net7.0/
+	-cp bin/filter_lib.so ../CatScale.FilterConfigTool/bin/Release/net7.0/

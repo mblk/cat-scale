@@ -53,14 +53,22 @@ public class ClassificationService : IClassificationService
         // TODO StablePhases / Cleaning / Measurement might be null if not included in ef-query.
         // TODO check args
         
-        var negativeWeightPhases = scaleEvent.StablePhases
-            .Where(sp => sp.Length > 1.0 && sp.Value < -10.0)
+        var allNegativeWeightPhases = scaleEvent.StablePhases
+            .Where(sp => sp is { Length: > 1.0, Value: < -10.0 })
             .OrderBy(sp => sp.Timestamp)
             .ToArray();
 
-        var positiveWeightPhases = scaleEvent.StablePhases
-            .Where(sp => sp.Length > 1.0 && sp.Value > 10.0)
+        var allPositiveWeightPhases = scaleEvent.StablePhases
+            .Where(sp => sp is { Length: > 1.0, Value: > 10.0 })
             .OrderBy(sp => sp.Timestamp)
+            .ToArray();
+
+        var significantNegativeWeightPhases = allNegativeWeightPhases
+            .Where(sp => sp.Value < -500.0)
+            .ToArray();
+
+        var significantPositiveWeightPhases = allPositiveWeightPhases
+            .Where(sp => sp.Value > 5000.0)
             .ToArray();
 
         // Clear old classification.
@@ -68,15 +76,21 @@ public class ClassificationService : IClassificationService
         scaleEvent.Measurement = null;
         
         // Cleaning?
-        if (negativeWeightPhases.Length > 0 && positiveWeightPhases.Length == 0)
+        if (significantNegativeWeightPhases.Any())
         {
             _logger.LogInformation($"Looks like cleaning ...");
+
+            // Try to determine removed weight.
+            double maxValue = significantNegativeWeightPhases.First().Value;
+            double minValue = significantNegativeWeightPhases.Skip(1).Min(sp => sp.Value);
+            double cleaningWeight = maxValue - minValue;
+            _logger.LogInformation($"cleaningWeight 1: {cleaningWeight}");
             
-            var maxValue = negativeWeightPhases.Max(x => x.Value);
-            var minValue = negativeWeightPhases.Min(x => x.Value);
-            var cleaningWeight = maxValue - minValue;
-            
-            // TODO detect mass going down & optionally up again during refills?
+            // Optionally use last phase instead?
+            double lastNegativePhaseValue = allNegativeWeightPhases.Last().Value;
+            if (lastNegativePhaseValue > -500.0)
+                cleaningWeight = lastNegativePhaseValue;
+            _logger.LogInformation($"cleaningWeight 2: {cleaningWeight}");
 
             scaleEvent.Cleaning = new Cleaning()
             {
@@ -91,14 +105,13 @@ public class ClassificationService : IClassificationService
         }
         
         // Measurement?
-        if(positiveWeightPhases.Length > 0 && negativeWeightPhases.Length <= 1)
+        if(significantPositiveWeightPhases.Any())
         {
             _logger.LogInformation($"Looks like measurement ...");
 
-            var longestStablePhase = positiveWeightPhases
+            var longestStablePhase = significantPositiveWeightPhases
                 .OrderByDescending(x => x.Length)
                 .First();
-
             var catWeight = longestStablePhase.Value;
 
             if (!TryClassifyCatByWeight(cats, scaleEvent.StartTime, catWeight, 500d, out var cat))
@@ -113,9 +126,8 @@ public class ClassificationService : IClassificationService
             var pooDuration = (pooEndTime - pooStartTime).TotalSeconds;
             var cleanupDuration = (scaleEvent.EndTime - pooEndTime).TotalSeconds;
 
-            var pooWeight = negativeWeightPhases.Length == 1
-                ? Math.Abs(negativeWeightPhases.Single().Value)
-                : 0d;
+            var pooWeight = allPositiveWeightPhases.Last().Value;
+            if (pooWeight is < 0 or > 500.0) pooWeight = 0.0;
             
             scaleEvent.Measurement = new Measurement()
             {

@@ -82,7 +82,9 @@ public class ClassificationService : IClassificationService
 
             // Try to determine removed weight.
             double maxValue = significantNegativeWeightPhases.First().Value;
-            double minValue = significantNegativeWeightPhases.Skip(1).Min(sp => sp.Value);
+            double minValue = significantNegativeWeightPhases.Length > 1
+                ? significantNegativeWeightPhases.Skip(1).Min(sp => sp.Value)
+                : maxValue;
             double cleaningWeight = maxValue - minValue;
             _logger.LogInformation($"cleaningWeight 1: {cleaningWeight}");
             

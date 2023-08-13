@@ -16,13 +16,15 @@ public class ScaleEventController : ControllerBase
     private readonly ILogger<ScaleEventController> _logger;
     private readonly CatScaleContext _dbContext;
     private readonly IClassificationService _classificationService;
+    private readonly INotificationService _notificationService;
 
     public ScaleEventController(ILogger<ScaleEventController> logger, CatScaleContext dbContext,
-        IClassificationService classificationService)
+        IClassificationService classificationService, INotificationService notificationService)
     {
         _logger = logger;
         _dbContext = dbContext;
         _classificationService = classificationService;
+        _notificationService = notificationService;
     }
 
     [HttpGet]
@@ -140,6 +142,8 @@ public class ScaleEventController : ControllerBase
         await _dbContext.ScaleEvents.AddAsync(scaleEvent);
         await _dbContext.SaveChangesAsync();
 
+        _notificationService.NotifyScaleEventsChanged();
+        
         // Done.
         return CreatedAtAction(nameof(GetOne),
             new { Id = scaleEvent.Id },
@@ -163,6 +167,8 @@ public class ScaleEventController : ControllerBase
 
         _dbContext.ScaleEvents.Remove(scaleEvent);
         await _dbContext.SaveChangesAsync();
+        
+        _notificationService.NotifyScaleEventsChanged();
 
         return Ok();
     }
@@ -193,6 +199,8 @@ public class ScaleEventController : ControllerBase
         _classificationService.ClassifyScaleEvent(cats, scaleEvent);
         await _dbContext.SaveChangesAsync();
 
+        _notificationService.NotifyScaleEventsChanged();
+        
         return Ok();
     }
 
@@ -219,6 +227,8 @@ public class ScaleEventController : ControllerBase
 
         await _dbContext.SaveChangesAsync();
 
+        _notificationService.NotifyScaleEventsChanged();
+        
         return Ok();
     }
 
@@ -233,6 +243,8 @@ public class ScaleEventController : ControllerBase
 
         await _dbContext.SaveChangesAsync();
 
+        _notificationService.NotifyScaleEventsChanged();
+        
         return Ok();
     }
 
@@ -322,5 +334,50 @@ public class ScaleEventController : ControllerBase
         }
 
         return Ok(result.ToArray());
+    }
+
+    [HttpGet]
+    public async Task Subscribe(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Streaming events ...");
+        
+        Response.Headers.Add("Content-Type", "text/event-stream");
+        Response.Headers.Add("Cache-Control", "no-cache");
+        Response.Headers.Add("Connection", "keep-alive");
+        
+        _notificationService.ScaleEventsChanged += handler;
+        
+        async void handler()
+        {
+            try
+            {
+                await Response.WriteAsync($"data: ScaleEventsChanged\n\n", cancellationToken);
+                await Response.Body.FlushAsync(cancellationToken);
+            }
+            catch (TaskCanceledException)
+            {
+                _logger.LogInformation("Cancelled");
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, $"Failed to send event");
+            }
+        }
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(1000, cancellationToken);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.LogInformation("Cancelled");
+        }
+        finally
+        {
+            _notificationService.ScaleEventsChanged -= handler;
+        }
     }
 }

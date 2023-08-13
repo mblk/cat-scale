@@ -83,6 +83,8 @@ builder.Services.AddScoped<IClassificationService, ClassificationService>();
 builder.Services.AddScoped<IInfluxService, InfluxService>();
 builder.Services.AddScoped<IGraphService, GraphService>();
 
+builder.Services.AddSingleton<INotificationService, NotificationService>();
+
 builder.Services.AddScoped<IRepositoryWrapper, RepositoryWrapper>(); // One Instance per Http-Request
 
 

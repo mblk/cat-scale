@@ -1,0 +1,14 @@
+//
+// postgres
+//
+
+docker run --name pg -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
+
+psql --host=localhost --username=postgres --password
+> create database catscale1;
+> exit
+
+psql --host=localhost --username=postgres --password -d catscale1 -f backup
+
+
+

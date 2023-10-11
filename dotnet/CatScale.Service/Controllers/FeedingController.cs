@@ -11,30 +11,30 @@ namespace CatScale.Service.Controllers;
 public class FeedingController : ControllerBase
 {
     private readonly ILogger<FeedingController> _logger;
-    private readonly IRepositoryWrapper _repositoryWrapper;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public FeedingController(ILogger<FeedingController> logger, IRepositoryWrapper repositoryWrapper)
+    public FeedingController(ILogger<FeedingController> logger, IUnitOfWork unitOfWork)
     {
         _logger = logger;
-        _repositoryWrapper = repositoryWrapper;
+        _unitOfWork = unitOfWork;
     }
 
     [HttpGet]
     public ActionResult<IEnumerable<FeedingDto>> GetAll()
     {
-        var foods = _repositoryWrapper.FeedingRepository
+        var feedings = _unitOfWork.FeedingRepository
             .Get()
             .AsEnumerable()
             .Select(DataMapper.MapFeeding)
             .ToArray();
 
-        return Ok(foods);
+        return Ok(feedings);
     }
 
     [HttpGet]
     public ActionResult<FeedingDto> GetOne(int id)
     {
-        var feeding = _repositoryWrapper.FeedingRepository
+        var feeding = _unitOfWork.FeedingRepository
             .Get(x => x.Id == id)
             .SingleOrDefault();
 
@@ -47,17 +47,9 @@ public class FeedingController : ControllerBase
     [HttpPut]
     public async Task<ActionResult<FeedingDto>> Create([FromBody] CreateFeedingRequest request)
     {
-        // Check cat/food/etc.
+        // TODO Check cat/food/etc?
         
-        // Check if it already exists.
-        // if (_repositoryWrapper.FoodRepository
-        //     .Get(f => f.Brand == request.Brand && f.Name == request.Name)
-        //     .Any())
-        // {
-        //     return BadRequest("Same feeding already exists");
-        // }
-        
-        _logger.LogInformation("New feeding: {food}", request);
+        _logger.LogInformation("New feeding: {Feeding}", request);
 
         var newFeeding = new Feeding
         {
@@ -68,51 +60,28 @@ public class FeedingController : ControllerBase
             Eaten = request.Eaten,
         };
 
-        _repositoryWrapper.FeedingRepository.Create(newFeeding);
-        await _repositoryWrapper.Save();
+        _unitOfWork.FeedingRepository.Create(newFeeding);
+        await _unitOfWork.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetOne), 
             new { id = newFeeding.Id }, 
             DataMapper.MapFeeding(newFeeding));
     }
-
-    // [HttpPost]
-    // public async Task<ActionResult<FeedingDto>> Update([FromBody] FeedingDto request)
-    // {
-    //     // TODO check if exists?
-    //     
-    //     _logger.LogInformation("Update feeding: {food}", request);
-    //
-    //     var updatedFeeding = new Feeding()
-    //     {
-    //         Id = request.Id,
-    //         CatId = request.CatId,
-    //         FoodId = request.FoodId,
-    //         Timestamp = request.Timestamp,
-    //         Offered = request.Offered,
-    //         Eaten = request.Eaten,
-    //     };
-    //     
-    //     _repositoryWrapper.FeedingRepository.Update(updatedFeeding);
-    //     await _repositoryWrapper.Save();
-    //
-    //     return Ok();
-    // }
     
     [HttpDelete]
     public async Task<IActionResult> Delete(int id)
     {
-        _logger.LogInformation("Delete feeding: {id}", id);
+        _logger.LogInformation("Delete feeding: {Id}", id);
     
-        var feeding = _repositoryWrapper.FeedingRepository
+        var feeding = _unitOfWork.FeedingRepository
             .Get(x => x.Id == id)
             .SingleOrDefault();
     
         if (feeding is null)
             return NotFound();
         
-        _repositoryWrapper.FeedingRepository.Delete(feeding);
-        await _repositoryWrapper.Save();
+        _unitOfWork.FeedingRepository.Delete(feeding);
+        await _unitOfWork.SaveChangesAsync();
     
         return Ok();
     }

@@ -12,12 +12,12 @@ public interface IRepository<T>
     void Delete(T entity);
 }
 
-public abstract class Repository<T> : IRepository<T>
+public class Repository<T> : IRepository<T>
     where T : class
 {
     private readonly DbSet<T> _dbSet;
 
-    protected Repository(DbSet<T> dbSet)
+    public Repository(DbSet<T> dbSet)
     {
         _dbSet = dbSet;
     }

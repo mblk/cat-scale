@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace CatScale.Service.Migrations
 {
-    [DbContext(typeof(CatScaleContext))]
+    [DbContext(typeof(CatScaleDbContext))]
     [Migration("20230410181414_Initial")]
     partial class Initial
     {

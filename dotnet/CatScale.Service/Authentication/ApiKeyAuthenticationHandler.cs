@@ -11,13 +11,13 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
 {
     private const string API_KEY_HEADER = "ApiKey";
 
-    private readonly CatScaleContext _context;
+    private readonly CatScaleDbContext _dbContext;
 
     public ApiKeyAuthenticationHandler(IOptionsMonitor<AuthenticationSchemeOptions> options,
-        ILoggerFactory logger, UrlEncoder encoder, ISystemClock clock, CatScaleContext context
+        ILoggerFactory logger, UrlEncoder encoder, ISystemClock clock, CatScaleDbContext dbContext
     ) : base(options, logger, encoder, clock)
     {
-        _context = context;
+        _dbContext = dbContext;
     }
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -29,7 +29,7 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
         if (String.IsNullOrWhiteSpace((apiKeyToValidate)))
             return AuthenticateResult.Fail("Invalid key."); 
 
-        var apiKey = await _context.UserApiKeys
+        var apiKey = await _dbContext.UserApiKeys
             .Include(uak => uak.User)
             .SingleOrDefaultAsync(uak => uak.Value == apiKeyToValidate);
 

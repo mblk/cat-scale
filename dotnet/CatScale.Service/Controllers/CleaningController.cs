@@ -8,9 +8,9 @@ namespace CatScale.Service.Controllers;
 public class CleaningController : ControllerBase
 {
     private readonly ILogger<CleaningController> _logger;
-    private readonly CatScaleContext _dbContext;
+    private readonly CatScaleDbContext _dbContext;
 
-    public CleaningController(ILogger<CleaningController> logger, CatScaleContext dbContext)
+    public CleaningController(ILogger<CleaningController> logger, CatScaleDbContext dbContext)
     {
         _logger = logger;
         _dbContext = dbContext;

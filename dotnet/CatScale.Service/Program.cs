@@ -24,7 +24,7 @@ builder.Services.AddControllers().AddJsonOptions(opt =>
     opt.JsonSerializerOptions.WriteIndented = true;
 });
 
-builder.Services.AddDbContext<CatScaleContext>(opt =>
+builder.Services.AddDbContext<CatScaleDbContext>(opt =>
 {
     opt.UseNpgsql(builder.Configuration.GetConnectionString("CatScalePG"));
 });
@@ -41,7 +41,7 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
     options.Password.RequireUppercase = false;
     options.Password.RequireLowercase = false;
 })
-.AddEntityFrameworkStores<CatScaleContext>()
+.AddEntityFrameworkStores<CatScaleDbContext>()
 .AddDefaultTokenProviders();
 
 builder.Services.ConfigureApplicationCookie(options =>
@@ -101,7 +101,7 @@ if (configEnableMigration)
     using (var scope = app.Services.CreateScope())
     {
         var services = scope.ServiceProvider;
-        var context = services.GetRequiredService<CatScaleContext>();
+        var context = services.GetRequiredService<CatScaleDbContext>();
         //context.Database.EnsureDeleted();
         //context.Database.EnsureCreated();
         context.Database.Migrate();
@@ -113,7 +113,7 @@ if (configPopulateData)
     using (var scope = app.Services.CreateScope())
     {
         var services = scope.ServiceProvider;
-        var context = services.GetRequiredService<CatScaleContext>();
+        var context = services.GetRequiredService<CatScaleDbContext>();
         CatScaleDbInitializer.Initialize(context);
     }
 }

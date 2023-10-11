@@ -15,12 +15,12 @@ public interface IUnitOfWork : IDisposable, IAsyncDisposable
 
 public class UnitOfWork : IUnitOfWork
 {
-    private readonly CatScaleContext _dbContext;
+    private readonly CatScaleDbContext _dbContext;
     
     public IFoodRepository FoodRepository { get; }
     public IFeedingRepository FeedingRepository { get; }
 
-    public UnitOfWork(CatScaleContext dbContext)
+    public UnitOfWork(CatScaleDbContext dbContext)
     {
         Console.WriteLine("UnitOfWork ctor");
         

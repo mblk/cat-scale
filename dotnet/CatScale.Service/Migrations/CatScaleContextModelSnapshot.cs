@@ -10,7 +10,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace CatScale.Service.Migrations
 {
-    [DbContext(typeof(CatScaleContext))]
+    [DbContext(typeof(CatScaleDbContext))]
     partial class CatScaleContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)

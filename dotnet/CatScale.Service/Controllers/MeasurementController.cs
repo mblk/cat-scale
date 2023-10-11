@@ -12,9 +12,9 @@ namespace CatScale.Service.Controllers;
 public class MeasurementController : ControllerBase
 {
     private readonly ILogger<MeasurementController> _logger;
-    private readonly CatScaleContext _dbContext;
+    private readonly CatScaleDbContext _dbContext;
 
-    public MeasurementController(ILogger<MeasurementController> logger, CatScaleContext dbContext)
+    public MeasurementController(ILogger<MeasurementController> logger, CatScaleDbContext dbContext)
     {
         _logger = logger;
         _dbContext = dbContext;

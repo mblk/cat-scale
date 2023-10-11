@@ -12,9 +12,9 @@ namespace CatScale.Service.Controllers;
 public class ToiletController : ControllerBase
 {
     private readonly ILogger<ToiletController> _logger;
-    private readonly CatScaleContext _dbContext;
+    private readonly CatScaleDbContext _dbContext;
 
-    public ToiletController(ILogger<ToiletController> logger, CatScaleContext dbContext)
+    public ToiletController(ILogger<ToiletController> logger, CatScaleDbContext dbContext)
     {
         _logger = logger;
         _dbContext = dbContext;

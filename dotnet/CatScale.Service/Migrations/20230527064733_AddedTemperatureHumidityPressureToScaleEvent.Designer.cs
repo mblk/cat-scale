@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace CatScale.Service.Migrations
 {
-    [DbContext(typeof(CatScaleContext))]
+    [DbContext(typeof(CatScaleDbContext))]
     [Migration("20230527064733_AddedTemperatureHumidityPressureToScaleEvent")]
     partial class AddedTemperatureHumidityPressureToScaleEvent
     {

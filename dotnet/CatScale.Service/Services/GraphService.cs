@@ -24,10 +24,10 @@ public interface IGraphService
 public class GraphService : IGraphService
 {
     private readonly ILogger<GraphService> _logger;
-    private readonly CatScaleContext _dbContext;
+    private readonly CatScaleDbContext _dbContext;
     private readonly IInfluxService _influxService;
 
-    public GraphService(ILogger<GraphService> logger, CatScaleContext dbContext, IInfluxService influxService)
+    public GraphService(ILogger<GraphService> logger, CatScaleDbContext dbContext, IInfluxService influxService)
     {
         _logger = logger;
         _dbContext = dbContext;

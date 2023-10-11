@@ -12,7 +12,7 @@ public class CustomWebApplicationFactory<T> : WebApplicationFactory<T> where T :
     {
         builder.ConfigureServices(services =>
         {
-            var dbContextDescriptor = services.Single(d => d.ServiceType == typeof(DbContextOptions<CatScaleContext>));
+            var dbContextDescriptor = services.Single(d => d.ServiceType == typeof(DbContextOptions<CatScaleDbContext>));
             services.Remove(dbContextDescriptor);
 
             var dbConnectionDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbConnection));
@@ -27,7 +27,7 @@ public class CustomWebApplicationFactory<T> : WebApplicationFactory<T> where T :
                 return connection;
             });
 
-            services.AddDbContext<CatScaleContext>((container, options) =>
+            services.AddDbContext<CatScaleDbContext>((container, options) =>
             {
                 var connection = container.GetRequiredService<DbConnection>();
                 options.UseSqlite(connection);

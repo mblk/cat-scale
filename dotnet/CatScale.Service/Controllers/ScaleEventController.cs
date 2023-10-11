@@ -14,11 +14,11 @@ namespace CatScale.Service.Controllers;
 public class ScaleEventController : ControllerBase
 {
     private readonly ILogger<ScaleEventController> _logger;
-    private readonly CatScaleContext _dbContext;
+    private readonly CatScaleDbContext _dbContext;
     private readonly IClassificationService _classificationService;
     private readonly INotificationService _notificationService;
 
-    public ScaleEventController(ILogger<ScaleEventController> logger, CatScaleContext dbContext,
+    public ScaleEventController(ILogger<ScaleEventController> logger, CatScaleDbContext dbContext,
         IClassificationService classificationService, INotificationService notificationService)
     {
         _logger = logger;

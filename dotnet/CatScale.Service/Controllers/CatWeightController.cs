@@ -13,9 +13,9 @@ namespace CatScale.Service.Controllers;
 public class CatWeightController : ControllerBase
 {
     private readonly ILogger<CatWeightController> _logger;
-    private readonly CatScaleContext _dbContext;
+    private readonly CatScaleDbContext _dbContext;
 
-    public CatWeightController(ILogger<CatWeightController> logger, CatScaleContext dbContext)
+    public CatWeightController(ILogger<CatWeightController> logger, CatScaleDbContext dbContext)
     {
         _logger = logger;
         _dbContext = dbContext;

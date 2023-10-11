@@ -4,9 +4,9 @@ namespace CatScale.Service.DbModel;
 
 public static class CatScaleDbInitializer
 {
-    public static void Initialize(CatScaleContext context)
+    public static void Initialize(CatScaleDbContext dbContext)
     {
-        if (context.Toilets.Any())
+        if (dbContext.Toilets.Any())
             return;
 
         var toilets = new Toilet[]
@@ -40,9 +40,9 @@ public static class CatScaleDbInitializer
             },
         };
 
-        context.Toilets.AddRange(toilets);
-        context.Cats.AddRange(cats);
+        dbContext.Toilets.AddRange(toilets);
+        dbContext.Cats.AddRange(cats);
         
-        context.SaveChanges();
+        dbContext.SaveChanges();
     }
 }

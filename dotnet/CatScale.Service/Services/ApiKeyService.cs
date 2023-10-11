@@ -12,16 +12,16 @@ public interface IApiKeyService
 
 public class ApiKeyService : IApiKeyService
 {
-    private readonly CatScaleContext _context;
+    private readonly CatScaleDbContext _dbContext;
 
-    public ApiKeyService(CatScaleContext context)
+    public ApiKeyService(CatScaleDbContext dbContext)
     {
-        _context = context;
+        _dbContext = dbContext;
     }
 
     public async Task<IEnumerable<UserApiKey>> GetApiKeys(ApplicationUser user)
     {
-        var apiKeys = await _context.UserApiKeys
+        var apiKeys = await _dbContext.UserApiKeys
             .AsNoTracking()
             .Where(k => k.User == user)
             .ToArrayAsync();
@@ -39,8 +39,8 @@ public class ApiKeyService : IApiKeyService
 
         // TODO store/validate expiration date
         
-        await _context.UserApiKeys.AddAsync(newApiKey);
-        await _context.SaveChangesAsync();
+        await _dbContext.UserApiKeys.AddAsync(newApiKey);
+        await _dbContext.SaveChangesAsync();
 
         return newApiKey;
     }
@@ -52,10 +52,10 @@ public class ApiKeyService : IApiKeyService
 
     public async Task DeleteApiKey(ApplicationUser user, int apiKeyId)
     {
-        var keysToDelete = _context.UserApiKeys
+        var keysToDelete = _dbContext.UserApiKeys
             .Where(k => k.User == user && k.Id == apiKeyId);
 
-        _context.UserApiKeys.RemoveRange(keysToDelete);
-        await _context.SaveChangesAsync();
+        _dbContext.UserApiKeys.RemoveRange(keysToDelete);
+        await _dbContext.SaveChangesAsync();
     }
 }

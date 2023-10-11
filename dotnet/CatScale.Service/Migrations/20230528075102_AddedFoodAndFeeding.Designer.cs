@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace CatScale.Service.Migrations
 {
-    [DbContext(typeof(CatScaleContext))]
+    [DbContext(typeof(CatScaleDbContext))]
     [Migration("20230528075102_AddedFoodAndFeeding")]
     partial class AddedFoodAndFeeding
     {

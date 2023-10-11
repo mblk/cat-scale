@@ -9,7 +9,7 @@ public interface IFoodRepository : IRepository<Food>
 
 public class FoodRepository : Repository<Food>, IFoodRepository
 {
-    public FoodRepository(CatScaleContext dbContext) : base(dbContext.Foods)
+    public FoodRepository(CatScaleDbContext dbContext) : base(dbContext.Foods)
     {
     }
 }
@@ -20,7 +20,7 @@ public interface IFeedingRepository : IRepository<Feeding>
 
 public class FeedingRepository : Repository<Feeding>, IFeedingRepository
 {
-    public FeedingRepository(CatScaleContext dbContext) : base(dbContext.Feedings)
+    public FeedingRepository(CatScaleDbContext dbContext) : base(dbContext.Feedings)
     {
     }
 }

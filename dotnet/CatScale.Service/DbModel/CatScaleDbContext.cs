@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace CatScale.Service.DbModel;
 
-public class CatScaleContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
+public class CatScaleDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
 {
     public DbSet<Toilet> Toilets { get; set; } = null!;
     public DbSet<Cat> Cats { get; set; } = null!;
@@ -18,6 +18,6 @@ public class CatScaleContext : IdentityDbContext<ApplicationUser, ApplicationRol
 
     public DbSet<UserApiKey> UserApiKeys { get; set; } = null!;
 
-    public CatScaleContext(DbContextOptions<CatScaleContext> contextOptions)
+    public CatScaleDbContext(DbContextOptions<CatScaleDbContext> contextOptions)
         :base(contextOptions) { }
 }

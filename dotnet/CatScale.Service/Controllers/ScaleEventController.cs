@@ -344,6 +344,7 @@ public class ScaleEventController : ControllerBase
         Response.Headers.Add("Content-Type", "text/event-stream");
         Response.Headers.Add("Cache-Control", "no-cache");
         Response.Headers.Add("Connection", "keep-alive");
+        Response.Headers.Add("X-Accel-Buffering", "no");
         
         _notificationService.ScaleEventsChanged += handler;
         
@@ -351,6 +352,8 @@ public class ScaleEventController : ControllerBase
         {
             try
             {
+                _logger.LogInformation($"Sending change event ...");
+                
                 await Response.WriteAsync($"data: ScaleEventsChanged\n\n", cancellationToken);
                 await Response.Body.FlushAsync(cancellationToken);
             }

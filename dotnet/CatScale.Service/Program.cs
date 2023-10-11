@@ -85,7 +85,7 @@ builder.Services.AddScoped<IGraphService, GraphService>();
 
 builder.Services.AddSingleton<INotificationService, NotificationService>();
 
-builder.Services.AddScoped<IRepositoryWrapper, RepositoryWrapper>(); // One Instance per Http-Request
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>(); // One Instance per Http-Request
 
 
 var app = builder.Build();
@@ -120,7 +120,7 @@ if (configPopulateData)
 
 if (configPopulateUsers)
 {
-    Task.Run(async () =>
+    var t = Task.Run(async () =>
     {
         Console.WriteLine($"Start of user init task");
         
@@ -135,6 +135,10 @@ if (configPopulateUsers)
         
         Console.WriteLine($"End of user init task");
     });
+
+    Console.WriteLine("wait...");
+    t.GetAwaiter().GetResult();
+    Console.WriteLine("waited.");
 }
 
 app.UseSerilogRequestLogging(); // Note: position controls which requests are logged. Move down to reduce.
@@ -153,3 +157,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }

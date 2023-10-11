@@ -46,4 +46,8 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CatScale.Service.Tests" />
+  </ItemGroup>
+
 </Project>

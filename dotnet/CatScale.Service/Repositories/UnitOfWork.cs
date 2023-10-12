@@ -5,29 +5,20 @@ namespace CatScale.Service.Repositories;
 
 public interface IUnitOfWork : IDisposable, IAsyncDisposable
 {
-    IFoodRepository FoodRepository { get; }
-    IFeedingRepository FeedingRepository { get; }
-
     IRepository<T> GetRepository<T>() where T: class;
     
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
+    
+    // TODO add transactions
 }
 
-public class UnitOfWork : IUnitOfWork
+public sealed class UnitOfWork : IUnitOfWork
 {
     private readonly CatScaleDbContext _dbContext;
-    
-    public IFoodRepository FoodRepository { get; }
-    public IFeedingRepository FeedingRepository { get; }
 
     public UnitOfWork(CatScaleDbContext dbContext)
     {
-        Console.WriteLine("UnitOfWork ctor");
-        
         _dbContext = dbContext;
-
-        FoodRepository = new FoodRepository(dbContext);
-        FeedingRepository = new FeedingRepository(dbContext);
     }
 
     public IRepository<T> GetRepository<T>() where T : class
@@ -38,8 +29,6 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        Console.WriteLine("UnitOfWork.SaveChangesAsync");
-
         try
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
@@ -55,18 +44,14 @@ public class UnitOfWork : IUnitOfWork
             throw;
         }
     }
-
+    
     public void Dispose()
     {
-        Console.WriteLine("UnitOfWork.Dispose");
         _dbContext.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     public async ValueTask DisposeAsync()
     {
-        Console.WriteLine("UnitOfWork.DisposeAsync");
         await _dbContext.DisposeAsync();
-        GC.SuppressFinalize(this);
     }
 }

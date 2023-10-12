@@ -2,9 +2,9 @@ using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using CatScale.Service.Mapper;
 using CatScale.Service.Model.Cat;
+using CatScale.Service.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.Controllers;
 
@@ -13,44 +13,37 @@ namespace CatScale.Service.Controllers;
 public class CatController : ControllerBase
 {
     private readonly ILogger<CatController> _logger;
-    private readonly CatScaleDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public CatController(ILogger<CatController> logger, CatScaleDbContext dbContext)
+    public CatController(ILogger<CatController> logger, IUnitOfWork unitOfWork)
     {
         _logger = logger;
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<CatDto>> GetAll()
+    public ActionResult<IAsyncEnumerable<CatDto>> GetAll()
     {
-        _logger.LogInformation($"Getting all cats");
-        
-        var cats = _dbContext.Cats
-            .AsNoTracking()
-            .OrderBy(c => c.Id)
-            .AsEnumerable()
+        var cats = _unitOfWork.GetRepository<Cat>()
+            .Query(order: x => x.OrderBy(c => c.Id))
             .Select(DataMapper.MapCat);
 
         return Ok(cats);
     }
     
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<CatDto>> GetOne(int id)
+    public async Task<ActionResult<CatDto>> GetOne([FromRoute] int id)
     {
-        _logger.LogInformation($"Getting cat {id}");
-        
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-        
-        Cat? cat = await _dbContext.Cats
-            .AsNoTracking()
-            .SingleOrDefaultAsync(c => c.Id == id);
+        var cat = await _unitOfWork
+            .GetRepository<Cat>()
+            .Query(c => c.Id == id)
+            .SingleOrDefaultAsync();
 
-        if (cat is null)
-            return NotFound();
-        
-        return Ok(DataMapper.MapCat(cat));
+        return cat switch
+        {
+            null => NotFound(),
+            not null => Ok(DataMapper.MapCat(cat)),
+        };
     }
 
     [Authorize(Roles = ApplicationRoles.Admin)]
@@ -59,22 +52,20 @@ public class CatController : ControllerBase
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
-        
-        string name = request.Name?.Trim() ?? String.Empty;
-        if (String.IsNullOrWhiteSpace(name))
-        {
-            _logger.LogError($"Can't create cat because no name has been specified");
-            return BadRequest("Invalid name");
-        }
 
-        if (await _dbContext.Cats.AnyAsync(c => c.Name == name))
-        {
-            _logger.LogError($"Can't create cat because the name '{name}' is already in use");
+        var repo = _unitOfWork.GetRepository<Cat>();
+        
+        var name = request.Name?.Trim() ?? String.Empty;
+        if (String.IsNullOrWhiteSpace(name))
+            return BadRequest("Invalid name");
+
+        // TODO: Must use transaction?
+        var nameAlreadyInUse = await repo
+            .Query(c => c.Name == name)
+            .AnyAsync();
+        if (nameAlreadyInUse)
             return BadRequest("Name already in use");
-        }
-        
-        _logger.LogInformation($"Creating new cat: {request}");
-        
+       
         var newCat = new Cat
         {
             Type = DataMapper.MapCatType(request.Type),
@@ -82,80 +73,79 @@ public class CatController : ControllerBase
             DateOfBirth = request.DateOfBirth,
         };
 
-        await _dbContext.Cats.AddAsync(newCat);
-        await _dbContext.SaveChangesAsync();
+        repo.Create(newCat);
         
+        await _unitOfWork.SaveChangesAsync();
+       
         return CreatedAtAction(nameof(GetOne), new { id = newCat.Id }, DataMapper.MapCat(newCat));
     }
     
     [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpPost("{id:int}")]
-    public async Task<ActionResult<CatDto>> Update(int id, [FromBody] UpdateCatRequest request)
+    public async Task<ActionResult<CatDto>> Update([FromRoute] int id, [FromBody] UpdateCatRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        Cat? existingCat = await _dbContext.Cats
-            .SingleOrDefaultAsync(c => c.Id == id);
+        var repo = _unitOfWork.GetRepository<Cat>();
 
+        var existingCat = await repo
+            .Query(c => c.Id == id)
+            .SingleOrDefaultAsync();
         if (existingCat is null)
-        {
-            _logger.LogError($"Can't update cat {id} because it does not exist");
             return NotFound();
-        }
 
-        string name = request.Name?.Trim() ?? String.Empty;
+        var name = request.Name?.Trim() ?? String.Empty;
         if (String.IsNullOrWhiteSpace(name))
-        {
-            _logger.LogError($"Can't update cat because no name has been specified");
             return BadRequest("Invalid name");
-        }
 
-        if (await _dbContext.Cats.AnyAsync(c => c.Name == name && c.Id != existingCat.Id))
-        {
-            _logger.LogError($"Can't update cat because the name '{name}' is already in use");
+        // TODO: Must use transaction?
+        var newNameAlreadyInUse = await repo
+            .Query(c => c.Name == name && c.Id != existingCat.Id)
+            .AnyAsync();
+        if (newNameAlreadyInUse)
             return BadRequest("Name already in use");
-        }
         
-        _logger.LogInformation($"Updating cat: {request}");
-
         existingCat.Type = DataMapper.MapCatType(request.Type);
         existingCat.Name = name;
         existingCat.DateOfBirth = request.DateOfBirth;
 
-        await _dbContext.SaveChangesAsync();
+        repo.Update(existingCat);
+        
+        await _unitOfWork.SaveChangesAsync();
         
         return CreatedAtAction(nameof(GetOne), new { id = existingCat.Id }, DataMapper.MapCat(existingCat));
     }
 
     [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete([FromRoute] int id)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
-        
-        Cat? existingCat = await _dbContext.Cats
-            .Include(c => c.Measurements)
-            .SingleOrDefaultAsync(c => c.Id == id);
 
+        var repo = _unitOfWork.GetRepository<Cat>();
+
+        var existingCat = await repo
+            .Query(c => c.Id == id, includes: nameof(Cat.Measurements))
+            .SingleOrDefaultAsync();
+        
         if (existingCat is null)
-        {
-            _logger.LogError($"Can't delete cat {id} because it does not exist");
             return NotFound();
-        }
-
-        // Don't delete 'production' data by accident.
-        if (existingCat.Measurements.Count > 10)
-        {
-            _logger.LogError("Not deleting cat because it has too many measurements");
-            return BadRequest($"Not deleting cat because it has too many measurements");
-        }
-
-        _logger.LogInformation($"Deleting cat {id}");
         
-        _dbContext.Cats.Remove(existingCat);
-        await _dbContext.SaveChangesAsync();
+        // Don't delete 'production' data by accident.
+        var numMeasurements = existingCat.Measurements.Count;
+        if (numMeasurements > 10)
+        {
+            _logger.LogError("Not deleting cat {CatId} because it has too many measurements {NumMeasurements}", id, numMeasurements);
+            return BadRequest("Not deleting cat because it has too many measurements");
+        }
+
+        _logger.LogInformation("Deleting cat {CatId}", id);
+
+        repo.Delete(existingCat);
+
+        await _unitOfWork.SaveChangesAsync();
         
         return Ok();
     }

@@ -23,41 +23,42 @@ public class FoodController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<FoodDto>> GetAll()
+    public ActionResult<IAsyncEnumerable<FoodDto>> GetAll()
     {
-        var foods = _unitOfWork.FoodRepository
-            .Get()
-            .AsEnumerable()
-            .Select(DataMapper.MapFood)
-            .ToArray();
+        var foods = _unitOfWork.GetRepository<Food>()
+            .Query()
+            .Select(DataMapper.MapFood);
 
         return Ok(foods);
     }
 
-    [HttpGet]
-    public ActionResult<FoodDto> GetOne(int id)
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<FoodDto>> GetOne([FromRoute] int id)
     {
-        var food = _unitOfWork.FoodRepository
-            .Get(x => x.Id == id)
-            .SingleOrDefault();
+        var food = await _unitOfWork.GetRepository<Food>()
+            .Query(x => x.Id == id)
+            .SingleOrDefaultAsync();
 
-        if (food is null)
-            return NotFound();
-
-        return Ok(DataMapper.MapFood(food));
+        return food switch
+        {
+            null => NotFound(),
+            not null => DataMapper.MapFood(food),
+        };
     }
 
     [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpPut]
     public async Task<ActionResult<FoodDto>> Create([FromBody] CreateFoodRequest request)
     {
-        // Check if it already exists.
-        if (_unitOfWork.FoodRepository
-            .Get(f => f.Brand == request.Brand && f.Name == request.Name)
-            .Any())
-        {
+        var repo = _unitOfWork.GetRepository<Food>();
+
+        // TODO trim
+        var foodAlreadyExists = await repo
+            .Query(f => f.Brand == request.Brand && f.Name == request.Name)
+            .AnyAsync();
+        
+        if (foodAlreadyExists)
             return BadRequest("Same food already exists");
-        }
         
         _logger.LogInformation("New food: {Food}", request);
 
@@ -68,7 +69,8 @@ public class FoodController : ControllerBase
             CaloriesPerGram = request.CaloriesPerGram,
         };
 
-        _unitOfWork.FoodRepository.Create(newFood);
+        repo.Create(newFood);
+        
         await _unitOfWork.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetOne), 
@@ -80,7 +82,10 @@ public class FoodController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<FoodDto>> Update([FromBody] UpdateFoodRequest request)
     {
+        // TODO id from route?
         // TODO check if exists?
+        
+        var repo = _unitOfWork.GetRepository<Food>();
         
         _logger.LogInformation("Update food: {Food}", request);
 
@@ -92,7 +97,8 @@ public class FoodController : ControllerBase
             CaloriesPerGram = request.CaloriesPerGram,
         };
         
-        _unitOfWork.FoodRepository.Update(updatedFood);
+        repo.Update(updatedFood);
+        
         await _unitOfWork.SaveChangesAsync();
 
         return Ok();
@@ -100,18 +106,21 @@ public class FoodController : ControllerBase
     
     [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete([FromRoute] int id)
     {
         _logger.LogInformation("Delete food: {Id}", id);
 
-        var food = _unitOfWork.FoodRepository
-            .Get(x => x.Id == id)
-            .SingleOrDefault();
+        var repo = _unitOfWork.GetRepository<Food>();
+        
+        var food = await repo
+            .Query(x => x.Id == id)
+            .SingleOrDefaultAsync();
 
         if (food is null)
             return NotFound();
         
-        _unitOfWork.FoodRepository.Delete(food);
+        repo.Delete(food);
+        
         await _unitOfWork.SaveChangesAsync();
 
         return Ok();

@@ -1,7 +1,9 @@
 using CatScale.Domain.Model;
+using CatScale.Service.DbModel;
 using CatScale.Service.Mapper;
 using CatScale.Service.Model.Food;
 using CatScale.Service.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CatScale.Service.Controllers;
@@ -20,36 +22,39 @@ public class FeedingController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<FeedingDto>> GetAll()
+    public ActionResult<IAsyncEnumerable<FeedingDto>> GetAll()
     {
-        var feedings = _unitOfWork.FeedingRepository
-            .Get()
-            .AsEnumerable()
-            .Select(DataMapper.MapFeeding)
-            .ToArray();
+        var feedings = _unitOfWork
+            .GetRepository<Feeding>()
+            .Query()
+            .Select(DataMapper.MapFeeding);
 
         return Ok(feedings);
     }
 
-    [HttpGet]
-    public ActionResult<FeedingDto> GetOne(int id)
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<FeedingDto>> GetOne([FromRoute] int id)
     {
-        var feeding = _unitOfWork.FeedingRepository
-            .Get(x => x.Id == id)
-            .SingleOrDefault();
+        var feeding = await _unitOfWork
+            .GetRepository<Feeding>()
+            .Query(x => x.Id == id)
+            .SingleOrDefaultAsync();
 
-        if (feeding is null)
-            return NotFound();
-
-        return Ok(DataMapper.MapFeeding(feeding));
+        return feeding switch
+        {
+            null => NotFound(),
+            not null => Ok(DataMapper.MapFeeding(feeding)),
+        };
     }
 
+    // TODO check
+    [Authorize(AuthenticationSchemes = "ApiKey,Cookies", Roles = ApplicationRoles.Admin)]
     [HttpPut]
     public async Task<ActionResult<FeedingDto>> Create([FromBody] CreateFeedingRequest request)
     {
         // TODO Check cat/food/etc?
         
-        _logger.LogInformation("New feeding: {Feeding}", request);
+        var repo = _unitOfWork.GetRepository<Feeding>();
 
         var newFeeding = new Feeding
         {
@@ -60,7 +65,8 @@ public class FeedingController : ControllerBase
             Eaten = request.Eaten,
         };
 
-        _unitOfWork.FeedingRepository.Create(newFeeding);
+        repo.Create(newFeeding);
+        
         await _unitOfWork.SaveChangesAsync();
 
         return CreatedAtAction(nameof(GetOne), 
@@ -68,19 +74,23 @@ public class FeedingController : ControllerBase
             DataMapper.MapFeeding(newFeeding));
     }
     
-    [HttpDelete]
-    public async Task<IActionResult> Delete(int id)
+    [Authorize(Roles = ApplicationRoles.Admin)]
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete([FromRoute] int id)
     {
         _logger.LogInformation("Delete feeding: {Id}", id);
     
-        var feeding = _unitOfWork.FeedingRepository
-            .Get(x => x.Id == id)
-            .SingleOrDefault();
+        var repo = _unitOfWork.GetRepository<Feeding>();
+        
+        var feeding = await repo
+            .Query(x => x.Id == id)
+            .SingleOrDefaultAsync();
     
         if (feeding is null)
             return NotFound();
         
-        _unitOfWork.FeedingRepository.Delete(feeding);
+        repo.Delete(feeding);
+        
         await _unitOfWork.SaveChangesAsync();
     
         return Ok();

@@ -6,7 +6,12 @@ namespace CatScale.Service.Repositories;
 public interface IRepository<T>
     where T: class
 {
-    IQueryable<T> Get(Expression<Func<T, bool>>? condition = null);
+    IAsyncEnumerable<T> Query(
+        Expression<Func<T, bool>>? filter = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? order = null,
+        params string[] includes
+    );
+
     void Create(T entity);
     void Update(T entity);
     void Delete(T entity);
@@ -22,11 +27,24 @@ public class Repository<T> : IRepository<T>
         _dbSet = dbSet;
     }
     
-    public IQueryable<T> Get(Expression<Func<T, bool>>? condition = null)
+    public IAsyncEnumerable<T> Query(
+        Expression<Func<T, bool>>? filter = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? order = null,
+        params string[] includes
+        )
     {
-        return condition is null
-            ? _dbSet.AsNoTracking()
-            : _dbSet.AsNoTracking().Where(condition);
+        IQueryable<T> q = _dbSet.AsNoTracking();
+
+        if (filter != null)
+            q = q.Where(filter);
+
+        if (order != null)
+            q = order(q);
+
+        if (includes.Any())
+            q = includes.Aggregate(q, (sq, name) => sq.Include(name));
+
+        return q.AsAsyncEnumerable();
     }
 
     public void Create(T entity)

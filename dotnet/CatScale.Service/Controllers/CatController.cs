@@ -1,8 +1,8 @@
-using CatScale.Domain.Model;
+using CatScale.Application.Repository;
+using CatScale.Application.UseCases.Cats;
 using CatScale.Service.DbModel;
 using CatScale.Service.Mapper;
 using CatScale.Service.Model.Cat;
-using CatScale.Service.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,26 +24,20 @@ public class CatController : ControllerBase
     [HttpGet]
     public ActionResult<IAsyncEnumerable<CatDto>> GetAll()
     {
-        var cats = _unitOfWork.GetRepository<Cat>()
-            .Query(order: x => x.OrderBy(c => c.Id))
+        var cats = new GetAllCatsInteractor(_unitOfWork)
+            .GetAllCats()
             .Select(DataMapper.MapCat);
-
+        
         return Ok(cats);
     }
     
     [HttpGet("{id:int}")]
     public async Task<ActionResult<CatDto>> GetOne([FromRoute] int id)
     {
-        var cat = await _unitOfWork
-            .GetRepository<Cat>()
-            .Query(c => c.Id == id)
-            .SingleOrDefaultAsync();
+        var cat = await new GetCatInteractor(_unitOfWork)
+            .GetCat(id);
 
-        return cat switch
-        {
-            null => NotFound(),
-            not null => Ok(DataMapper.MapCat(cat)),
-        };
+        return Ok(DataMapper.MapCat(cat));
     }
 
     [Authorize(Roles = ApplicationRoles.Admin)]
@@ -53,31 +47,15 @@ public class CatController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var repo = _unitOfWork.GetRepository<Cat>();
-        
-        var name = request.Name?.Trim() ?? String.Empty;
-        if (String.IsNullOrWhiteSpace(name))
-            return BadRequest("Invalid name");
-
-        // TODO: Must use transaction?
-        var nameAlreadyInUse = await repo
-            .Query(c => c.Name == name)
-            .AnyAsync();
-        if (nameAlreadyInUse)
-            return BadRequest("Name already in use");
+        var newCat = await new CreateCatInteractor(_unitOfWork)
+            .CreateCat(new CreateCatInteractor.Request(
+                DataMapper.MapCatType(request.Type),
+                request.Name,
+                request.DateOfBirth));
        
-        var newCat = new Cat
-        {
-            Type = DataMapper.MapCatType(request.Type),
-            Name = name,
-            DateOfBirth = request.DateOfBirth,
-        };
-
-        repo.Create(newCat);
-        
-        await _unitOfWork.SaveChangesAsync();
-       
-        return CreatedAtAction(nameof(GetOne), new { id = newCat.Id }, DataMapper.MapCat(newCat));
+        return CreatedAtAction(nameof(GetOne), 
+            new { id = newCat.Id }, 
+            DataMapper.MapCat(newCat));
     }
     
     [Authorize(Roles = ApplicationRoles.Admin)]
@@ -87,34 +65,16 @@ public class CatController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var repo = _unitOfWork.GetRepository<Cat>();
-
-        var existingCat = await repo
-            .Query(c => c.Id == id)
-            .SingleOrDefaultAsync();
-        if (existingCat is null)
-            return NotFound();
-
-        var name = request.Name?.Trim() ?? String.Empty;
-        if (String.IsNullOrWhiteSpace(name))
-            return BadRequest("Invalid name");
-
-        // TODO: Must use transaction?
-        var newNameAlreadyInUse = await repo
-            .Query(c => c.Name == name && c.Id != existingCat.Id)
-            .AnyAsync();
-        if (newNameAlreadyInUse)
-            return BadRequest("Name already in use");
+        var existingCat = await new UpdateCatInteractor(_unitOfWork)
+            .UpdateCat(new UpdateCatInteractor.Request(
+                id,
+                DataMapper.MapCatType(request.Type),
+                request.Name,
+                request.DateOfBirth));
         
-        existingCat.Type = DataMapper.MapCatType(request.Type);
-        existingCat.Name = name;
-        existingCat.DateOfBirth = request.DateOfBirth;
-
-        repo.Update(existingCat);
-        
-        await _unitOfWork.SaveChangesAsync();
-        
-        return CreatedAtAction(nameof(GetOne), new { id = existingCat.Id }, DataMapper.MapCat(existingCat));
+        return CreatedAtAction(nameof(GetOne), 
+            new { id = existingCat.Id }, 
+            DataMapper.MapCat(existingCat));
     }
 
     [Authorize(Roles = ApplicationRoles.Admin)]
@@ -124,28 +84,8 @@ public class CatController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var repo = _unitOfWork.GetRepository<Cat>();
-
-        var existingCat = await repo
-            .Query(c => c.Id == id, includes: nameof(Cat.Measurements))
-            .SingleOrDefaultAsync();
-        
-        if (existingCat is null)
-            return NotFound();
-        
-        // Don't delete 'production' data by accident.
-        var numMeasurements = existingCat.Measurements.Count;
-        if (numMeasurements > 10)
-        {
-            _logger.LogError("Not deleting cat {CatId} because it has too many measurements {NumMeasurements}", id, numMeasurements);
-            return BadRequest("Not deleting cat because it has too many measurements");
-        }
-
-        _logger.LogInformation("Deleting cat {CatId}", id);
-
-        repo.Delete(existingCat);
-
-        await _unitOfWork.SaveChangesAsync();
+        await new DeleteCatInteractor(_unitOfWork)
+            .DeleteCat(id);
         
         return Ok();
     }

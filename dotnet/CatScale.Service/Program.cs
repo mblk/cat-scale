@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
+using CatScale.Application.Repository;
 using CatScale.Service.Authentication;
 using CatScale.Service.DbModel;
+using CatScale.Service.Middlewares;
 using CatScale.Service.Repositories;
 using CatScale.Service.Services;
 using Microsoft.AspNetCore.Authentication;
@@ -147,7 +149,10 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    //app.UseDeveloperExceptionPage();
 }
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
 
@@ -158,4 +163,5 @@ app.MapControllers();
 
 app.Run();
 
+// Required for WebApplicationFactory in integration tests.
 public partial class Program { }

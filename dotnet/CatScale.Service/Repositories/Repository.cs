@@ -1,21 +1,8 @@
 using System.Linq.Expressions;
+using CatScale.Application.Repository;
 using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.Repositories;
-
-public interface IRepository<T>
-    where T: class
-{
-    IAsyncEnumerable<T> Query(
-        Expression<Func<T, bool>>? filter = null,
-        Func<IQueryable<T>, IOrderedQueryable<T>>? order = null,
-        params string[] includes
-    );
-
-    void Create(T entity);
-    void Update(T entity);
-    void Delete(T entity);
-}
 
 public class Repository<T> : IRepository<T>
     where T : class

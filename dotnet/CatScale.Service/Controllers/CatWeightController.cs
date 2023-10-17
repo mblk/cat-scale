@@ -1,10 +1,10 @@
-using CatScale.Domain.Model;
+using CatScale.Application.Repository;
+using CatScale.Application.UseCases.CatWeights;
 using CatScale.Service.DbModel;
 using CatScale.Service.Mapper;
 using CatScale.Service.Model.Cat;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.Controllers;
 
@@ -13,40 +13,30 @@ namespace CatScale.Service.Controllers;
 public class CatWeightController : ControllerBase
 {
     private readonly ILogger<CatWeightController> _logger;
-    private readonly CatScaleDbContext _dbContext;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public CatWeightController(ILogger<CatWeightController> logger, CatScaleDbContext dbContext)
+    public CatWeightController(ILogger<CatWeightController> logger, IUnitOfWork unitOfWork)
     {
         _logger = logger;
-        _dbContext = dbContext;
+        _unitOfWork = unitOfWork;
     }
 
     [HttpGet("{catId:int}")]
-    public async Task<ActionResult<IEnumerable<CatWeightDto>>> GetAll(int catId)
+    public async Task<ActionResult<IAsyncEnumerable<CatWeightDto>>> GetAll([FromRoute] int catId)
     {
-        var cat = await _dbContext.Cats
-            .AsNoTracking()
-            .Include(c => c.Weights)
-            .SingleOrDefaultAsync(c => c.Id == catId);
-
-        if (cat is null)
-            return NotFound();
-
-        var mappedWeights = cat.Weights
+        var catWeights = (await new GetAllCatWeightsInteractor(_unitOfWork)
+            .GetAllCatWeights(catId))
             .Select(DataMapper.MapCatWeight);
 
-        return Ok(mappedWeights);
+        return Ok(catWeights);
     }
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<CatWeightDto>> GetOne(int id)
+    public async Task<ActionResult<CatWeightDto>> GetOne([FromRoute] int id)
     {
-        var catWeight = await _dbContext.CatWeights
-            .SingleOrDefaultAsync(cw => cw.Id == id);
-
-        if (catWeight is null)
-            return NotFound();
-
+        var catWeight = await new GetCatWeightInteractor(_unitOfWork)
+            .GetCatWeight(id);
+        
         return Ok(DataMapper.MapCatWeight(catWeight));
     }
 
@@ -56,59 +46,24 @@ public class CatWeightController : ControllerBase
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
-        
-        _logger.LogInformation("Creating new cat weight {CatWeight}", request);
-        
-        var cat = await _dbContext.Cats
-            .AsNoTracking()
-            .Include(c => c.Weights)
-            .SingleOrDefaultAsync(c => c.Id == request.CatId);
 
-        if (cat is null)
-            return BadRequest("Cat does not exist");
+        var newCatWeight = await new CreateCatWeightInteractor(_unitOfWork)
+            .CreateCatWeight(new CreateCatWeightInteractor.Request(
+                request.CatId, request.Timestamp, request.Weight
+            ));
 
-        var newCatWeight = new CatWeight()
-        {
-            CatId = cat.Id,
-            Timestamp = request.Timestamp.ToUniversalTime(),
-            Weight = request.Weight,
-        };
-
-        await _dbContext.CatWeights.AddAsync(newCatWeight);
-        await _dbContext.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetOne), new { Id = newCatWeight.Id }, DataMapper.MapCatWeight(newCatWeight));
+        return CreatedAtAction(nameof(GetOne),
+            new { id = newCatWeight.Id },
+            DataMapper.MapCatWeight(newCatWeight));
     }
 
     [HttpDelete("{id:int}")]
     [Authorize(Roles = ApplicationRoles.Admin)]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete([FromRoute] int id)
     {
-        _logger.LogInformation("Deleting cat weight {id}", id);
+        await new DeleteCatWeightInteractor(_unitOfWork)
+            .DeleteCatWeight(id);
 
-        var catWeight = await _dbContext.CatWeights
-            .SingleOrDefaultAsync(cw => cw.Id == id);
-
-        if (catWeight is null)
-            return NotFound("Cat weight does not exist");
-
-        var cat = await _dbContext.Cats
-            .Include(c => c.Weights)
-            .SingleOrDefaultAsync(c => c.Id == catWeight.CatId);
-
-        if (cat is null)
-            return NotFound("Cat does not exist");
-
-        if (cat.Weights.Count <= 1)
-            return BadRequest("Can't delete last remaining cat weight");
-
-        _dbContext.CatWeights.Remove(catWeight);
-        await _dbContext.SaveChangesAsync();
-        
         return Ok();
     }
-    
-    // get active
-    // update
-
 }

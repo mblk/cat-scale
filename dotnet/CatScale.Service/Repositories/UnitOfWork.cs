@@ -1,16 +1,8 @@
+using CatScale.Application.Repository;
 using CatScale.Service.DbModel;
 using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.Repositories;
-
-public interface IUnitOfWork : IDisposable, IAsyncDisposable
-{
-    IRepository<T> GetRepository<T>() where T: class;
-    
-    Task SaveChangesAsync(CancellationToken cancellationToken = default);
-    
-    // TODO add transactions
-}
 
 public sealed class UnitOfWork : IUnitOfWork
 {

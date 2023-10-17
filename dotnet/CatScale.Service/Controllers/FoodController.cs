@@ -1,8 +1,8 @@
+using CatScale.Application.Repository;
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using CatScale.Service.Mapper;
 using CatScale.Service.Model.Food;
-using CatScale.Service.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,7 +17,6 @@ public class FoodController : ControllerBase
 
     public FoodController(ILogger<FoodController> logger, IUnitOfWork unitOfWork)
     {
-        Console.WriteLine("FoodController ctor");
         _logger = logger;
         _unitOfWork = unitOfWork;
     }

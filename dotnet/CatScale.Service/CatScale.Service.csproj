@@ -33,6 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CatScale.Application\CatScale.Application.csproj" />
     <ProjectReference Include="..\CatScale.Domain\CatScale.Domain.csproj" />
     <ProjectReference Include="..\CatScale.Service.Model\CatScale.Service.Model.csproj" />
   </ItemGroup>

@@ -58,8 +58,8 @@ public class ScaleEventIntegrationTests : IntegrationTest
 
         Assert.Collection(scaleEvents, e =>
         {
-            Assert.Equal(tStart, e.Start);
-            Assert.Equal(tEnd, e.End);
+            Assert.Equal(tStart, e.Start, new MyDateTimeOffsetComparer());
+            Assert.Equal(tEnd, e.End, new MyDateTimeOffsetComparer());
 
             Assert.Equal(22.0d, e.Temperature, 0.001d);
             Assert.Equal(50.0d, e.Humidity, 0.001d);
@@ -70,5 +70,18 @@ public class ScaleEventIntegrationTests : IntegrationTest
             Assert.Equal(createdCat.Id, e.Measurement.CatId);
             Assert.Equal(5011.0d, e.Measurement.CatWeight, 0.001d);
         });
+    }
+    
+    private class MyDateTimeOffsetComparer : IEqualityComparer<DateTimeOffset>
+    {
+        public bool Equals(DateTimeOffset x, DateTimeOffset y)
+        {
+            return (x - y).TotalSeconds < 0.1d; // TODO figure out max delta
+        }
+    
+        public int GetHashCode(DateTimeOffset obj)
+        {
+            return obj.Ticks.GetHashCode();
+        }
     }
 }

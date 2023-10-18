@@ -1,5 +1,7 @@
 using CatScale.Service.Model.Authentication;
 using CatScale.Service.Model.Cat;
+using CatScale.Service.Model.ScaleEvent;
+using CatScale.Service.Model.Toilet;
 using CatScale.Service.Tests.Utils;
 
 namespace CatScale.Service.Tests.Integration;
@@ -38,9 +40,47 @@ public abstract class IntegrationTest
             .EnsureSuccessStatusCode();
     }
 
+
+    protected async Task<ToiletDto[]> GetAllToilets()
+        => await Client.GetFromJsonAsync<ToiletDto[]>("api/Toilet/GetAll")
+           ?? throw new Exception("Failed to deserialize response");
+
+    protected async Task<ToiletDto> GetToilet(int id)
+        => await Client.GetFromJsonAsync<ToiletDto>($"api/Toilet/GetOne/{id}") ??
+           throw new Exception("Failed to deserialize response");
+
+    protected async Task<ToiletDto> CreateToilet(string name, string description)
+    {
+        var request = new CreateToiletRequest(name, description);
+        var response = (await Client.PutAsJsonAsync("api/Toilet/Create", request))
+            .EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<ToiletDto>() ??
+               throw new Exception("Failed to deserialize response");
+    }
+
+    protected async Task<ToiletDto> UpdateToilet(int id, string name, string description)
+    {
+        var response = (await Client.PostAsJsonAsync($"api/Toilet/Update/{id}",
+                new UpdateToiletRequest(name, description)))
+            .EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<ToiletDto>() ??
+               throw new Exception("Failed to deserialize response");
+    }
+
+    protected async Task DeleteToilet(int id)
+        => (await Client.DeleteAsync($"api/Toilet/Delete/{id}"))
+            .EnsureSuccessStatusCode();
+
+
     protected async Task<CatDto[]> GetAllCats()
         => await Client.GetFromJsonAsync<CatDto[]>("api/Cat/GetAll")
            ?? throw new Exception("Failed to deserialize response");
+
+    protected async Task<CatDto> GetCat(int id)
+        => await Client.GetFromJsonAsync<CatDto>($"api/Cat/GetOne/{id}") ??
+           throw new Exception("Failed to deserialize response");
 
     protected async Task<CatDto> CreateCat(CatTypeDto type, string name, DateOnly dateOfBirth)
     {
@@ -88,4 +128,41 @@ public abstract class IntegrationTest
         => (await Client.DeleteAsync($"api/CatWeight/Delete/{catWeightId}"))
             .EnsureSuccessStatusCode();
 
+
+    protected async Task<ScaleEventDto[]> GetAllScaleEvents()
+        => await Client.GetFromJsonAsync<ScaleEventDto[]>($"api/ScaleEvent/GetAll") ??
+           throw new Exception("Failed to deserialize response");
+
+    protected async Task CreateScaleEvent(NewScaleEvent scaleEvent)
+    {
+        var response = await Client.PostAsJsonAsync("api/ScaleEvent/Create", scaleEvent);
+        response.EnsureSuccessStatusCode();
+    }
+    
+    
+    
+    
+    // public async Task DeleteScaleEvent(int id)
+    //     => (await Client.DeleteAsync($"api/ScaleEvent/Delete/{id}"))
+    //         .EnsureSuccessStatusCode();
+    //
+    // public async Task ClassifyScaleEvent(int id)
+    //     => (await Client.PostAsync($"api/ScaleEvent/Classify/{id}", null))
+    //         .EnsureSuccessStatusCode();
+    //
+    // public async Task ClassifyAllScaleEvents()
+    //     => (await Client.PostAsync($"api/ScaleEvent/ClassifyAllEvents", null))
+    //         .EnsureSuccessStatusCode();
+    //
+    // public async Task DeleteAllScaleEventClassifications()
+    //     => (await Client.PostAsync($"api/ScaleEvent/DeleteAllClassifications", null))
+    //         .EnsureSuccessStatusCode();
+    //
+    // public async Task<ScaleEventStats> GetScaleEventStats()
+    //     => await Client.GetFromJsonAsync<ScaleEventStats>("api/ScaleEvent/GetStats") ??
+    //        throw new Exception("Failed to deserialize response");
+    //
+    // public async Task<PooCount[]> GetPooCounts()
+    //     => await Client.GetFromJsonAsync<PooCount[]>("api/ScaleEvent/GetPooCounts") ??
+    //        throw new Exception("Failed to deserialize response");
 }

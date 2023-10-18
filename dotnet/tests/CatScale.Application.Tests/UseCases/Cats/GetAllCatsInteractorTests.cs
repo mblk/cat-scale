@@ -5,7 +5,7 @@ using Moq;
 
 namespace CatScale.Application.Tests.UseCases.Cats;
 
-public class CatUseCaseTests
+public class GetAllCatsInteractorTests
 {
     [Fact]
     public async Task GetAllCats_Should_ReturnEmptyList_When_NoCatsExist()
@@ -14,7 +14,9 @@ public class CatUseCaseTests
         catRepoMock.Setup(m => m.Query(
             null, 
             It.IsAny<Func<IQueryable<Cat>, IOrderedQueryable<Cat>>>(), 
-            Array.Empty<string>()))
+            null,
+            null,
+            null))
             .Returns(Array.Empty<Cat>().ToAsyncEnumerable());
         var catRepo = catRepoMock.Object;
         

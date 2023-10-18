@@ -1,3 +1,4 @@
+using CatScale.Application.UseCases.ScaleEvents;
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using CatScale.Service.Mapper;
@@ -28,49 +29,41 @@ public class ScaleEventController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ScaleEventDto>>> GetAll(int? toiletId)
+    [HttpGet("{toiletId:int?}")]
+    public async Task<ActionResult<IAsyncEnumerable<ScaleEventDto>>> GetAll(
+        [FromServices] IGetAllScaleEventsInteractor interactor,
+        [FromRoute] int? toiletId,
+        [FromQuery] int? skip,
+        [FromQuery] int? take)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        _logger.LogInformation("GetAll {ToiledId} {Skip} {Take}", toiletId, skip, take);
+        
+        var response = await interactor
+            .GetAllScaleEvents(new IGetAllScaleEventsInteractor.Request(toiletId, skip, take));
+            
+        var scaleEvents = response.ScaleEvents
+            .Select(DataMapper.MapScaleEvent);
 
-        _logger.LogInformation($"Getting all scale events");
-
-        var scaleEvents = await _dbContext.ScaleEvents
-            .AsNoTracking()
-            .Include(e => e.StablePhases)
-            .Include(e => e.Measurement)
-            .Include(e => e.Cleaning)
-            .ToArrayAsync();
-
-        var mappedScaleEvents = scaleEvents
-            .Select(DataMapper.MapScaleEvent)
-            .ToArray();
-
-        return Ok(mappedScaleEvents);
+        Response.Headers.Add("X-Total-Count", response.Count.ToString());
+        
+        return Ok(scaleEvents);
     }
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<ScaleEventDto>> GetOne(int id)
+    public async Task<ActionResult<ScaleEventDto>> GetOne(
+        [FromServices] IGetOneScaleEventInteractor interactor,
+        [FromRoute] int id)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
+        var response = await interactor
+            .GetOneScaleEvent(new IGetOneScaleEventInteractor.Request(id));
 
-        _logger.LogInformation("Get scale event {id}", id);
-
-        var scaleEvent = await _dbContext.ScaleEvents
-            .AsNoTracking()
-            .Include(e => e.StablePhases)
-            .Include(e => e.Measurement)
-            .Include(e => e.Cleaning)
-            .SingleOrDefaultAsync();
-
-        if (scaleEvent is null)
-            return NotFound();
-
-        return Ok(DataMapper.MapScaleEvent(scaleEvent));
+        return Ok(DataMapper.MapScaleEvent(response.ScaleEvent));
     }
-
-    [Authorize(AuthenticationSchemes = "ApiKey")]
+    
+    // The registered schemes are: Identity.Application, Identity.External, Identity.TwoFactorRememberMe, Identity.TwoFactorUserId, ApiKey
+    //[Authorize(AuthenticationSchemes = "ApiKey")]
+    //[Authorize(AuthenticationSchemes = "ApiKey,Cookies", Roles = ApplicationRoles.Admin)]
+    [Authorize(AuthenticationSchemes = "ApiKey, Identity.Application")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] NewScaleEvent newScaleEvent)
     {
@@ -98,15 +91,16 @@ public class ScaleEventController : ControllerBase
 
         if (startTime < DateTimeOffset.Now.AddDays(-7))
             return BadRequest("Start time is too far in the past");
-        
+       
+        // TODO does not work on SQLite ...
         // Check if the event already exists.
-        if (await _dbContext.ScaleEvents.AnyAsync(e =>
-                Math.Abs((e.StartTime - startTime).TotalSeconds) < 1 &&
-                Math.Abs((e.EndTime - endTime).TotalSeconds) < 1))
-        {
-            _logger.LogError("Can't create scale event because it already exists: {newScaleEvent}", newScaleEvent);
-            return Conflict("Scale event already exists");
-        }
+        //if (await _dbContext.ScaleEvents.AnyAsync(e =>
+        //        Math.Abs((e.StartTime - startTime).TotalSeconds) < 1 &&
+        //        Math.Abs((e.EndTime - endTime).TotalSeconds) < 1))
+        //{
+        //    _logger.LogError("Can't create scale event because it already exists: {newScaleEvent}", newScaleEvent);
+        //    return Conflict("Scale event already exists");
+        //}
 
         // Lookup required data.
         var toilet = await _dbContext.Toilets

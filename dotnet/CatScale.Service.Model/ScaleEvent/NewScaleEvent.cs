@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 namespace CatScale.Service.Model.ScaleEvent;
 
 [PublicAPI]
-public record NewScaleEvent
+public record NewScaleEvent // TODO why are these nullable?
 (
     [Required] int? ToiletId,
     [Required] DateTimeOffset? StartTime,

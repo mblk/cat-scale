@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 using CatScale.Application.Repository;
+using CatScale.Application.UseCases.ScaleEvents;
+using CatScale.Application.UseCases.Toilets;
 using CatScale.Service.Authentication;
 using CatScale.Service.DbModel;
 using CatScale.Service.Middlewares;
@@ -89,6 +91,20 @@ builder.Services.AddSingleton<INotificationService, NotificationService>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>(); // One Instance per Http-Request
 
+// ---------------
+// TODO auto-register?
+builder.Services
+    .AddTransient<IGetAllScaleEventsInteractor, GetAllScaleEventsInteractor>()
+    .AddTransient<IGetOneScaleEventInteractor, GetOneScaleEventInteractor>()
+    
+    .AddTransient<IGetAllToiletsInteractor, GetAllToiletsInteractor>()
+    .AddTransient<IGetOneToiletInteractor, GetOneToiletInteractor>()
+    .AddTransient<ICreateToiletInteractor, CreateToiletInteractor>()
+    .AddTransient<IUpdateToiletInteractor, UpdateToiletInteractor>()
+    .AddTransient<IDeleteToiletInteractor, DeleteToiletInteractor>()
+    
+    ;
+// ---------------
 
 var app = builder.Build();
 

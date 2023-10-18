@@ -26,7 +26,7 @@ public class DeleteCatWeightInteractor
             throw new EntityNotFoundException($"Cat weight {catWeightId} not found");
 
         var cat = await catRepo
-            .Query(filter: c => c.Id == catWeight.CatId, includes: nameof(Cat.Weights))
+            .Query(filter: c => c.Id == catWeight.CatId, includes: new [] { nameof(Cat.Weights) })
             .SingleAsync();
 
         var hasMoreWeights = cat.Weights.Any(cw => cw.Id != catWeight.Id);

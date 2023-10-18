@@ -1,9 +1,10 @@
+using CatScale.Application.UseCases.Toilets;
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using CatScale.Service.Mapper;
 using CatScale.Service.Model.Toilet;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.Controllers;
 
@@ -12,40 +13,76 @@ namespace CatScale.Service.Controllers;
 public class ToiletController : ControllerBase
 {
     private readonly ILogger<ToiletController> _logger;
-    private readonly CatScaleDbContext _dbContext;
 
-    public ToiletController(ILogger<ToiletController> logger, CatScaleDbContext dbContext)
+    public ToiletController(ILogger<ToiletController> logger)
     {
         _logger = logger;
-        _dbContext = dbContext;
     }
 
     [HttpGet]
-    public ActionResult<IEnumerable<ToiletDto>> GetAll()
+    public async Task<ActionResult<IAsyncEnumerable<ToiletDto>>> GetAll(
+        [FromServices] IGetAllToiletsInteractor interactor)
     {
-        _logger.LogInformation($"Get all toilets");
-        
-        var toilets = _dbContext.Toilets
-            .AsNoTracking()
-            .AsEnumerable()
+        var response = await interactor
+            .GetAllToilets(new IGetAllToiletsInteractor.Request());
+
+        var toilets = response.Toilets
             .Select(DataMapper.MapToilet);
 
         return Ok(toilets);
     }
 
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<ToiletDto>> GetOne(int id)
+    public async Task<ActionResult<ToiletDto>> GetOne(
+        [FromServices] IGetOneToiletInteractor interactor,
+        [FromRoute] int id)
     {
-        _logger.LogInformation($"Get toilet {id}");
+        var response = await interactor
+            .GetOneToilet(new IGetOneToiletInteractor.Request(
+                id));
 
-        Toilet? toilet = await _dbContext.Toilets
-            .AsNoTracking()
-            .Include(c => c.ScaleEvents).ThenInclude(e => e.StablePhases)
-            .SingleOrDefaultAsync(c => c.Id == id);
-        
-        if (toilet is null)
-            return NotFound();
-        
-        return Ok(DataMapper.MapToilet(toilet));
+        return Ok(DataMapper.MapToilet(response.Toilet));
+    }
+
+    [Authorize(Roles = ApplicationRoles.Admin)]
+    [HttpPut]
+    public async Task<ActionResult<Toilet>> Create(
+        [FromServices] ICreateToiletInteractor interactor,
+        [FromBody] CreateToiletRequest request)
+    {
+        var response = await interactor
+            .CreateToilet(new ICreateToiletInteractor.Request(
+                request.Name, request.Description));
+
+        return CreatedAtAction(nameof(GetOne),
+            new { id = response.Toilet.Id },
+            DataMapper.MapToilet(response.Toilet));
+    }
+
+    [Authorize(Roles = ApplicationRoles.Admin)]
+    [HttpPost("{id:int}")]
+    public async Task<ActionResult<Toilet>> Update(
+        [FromServices] IUpdateToiletInteractor interactor,
+        [FromRoute] int id,
+        [FromBody] UpdateToiletRequest request)
+    {
+        var response = await interactor
+            .UpdateToilet(new IUpdateToiletInteractor.Request(
+                id, request.Name, request.Description));
+
+        return CreatedAtAction(nameof(GetOne),
+            new { id = response.Toilet.Id },
+            DataMapper.MapToilet(response.Toilet));
+    }
+
+    [Authorize(Roles = ApplicationRoles.Admin)]
+    [HttpDelete("{id:int}")]
+    public async Task<ActionResult> Delete(
+        [FromServices] IDeleteToiletInteractor interactor,
+        [FromRoute] int id)
+    {
+        _ = await interactor.DeleteToilet(new IDeleteToiletInteractor.Request(id));
+
+        return Ok();
     }
 }

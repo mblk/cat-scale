@@ -13,12 +13,23 @@ public class Repository<T> : IRepository<T>
     {
         _dbSet = dbSet;
     }
+
+    public async Task<int> Count(Expression<Func<T, bool>>? filter = null)
+    {
+        var q = _dbSet.AsNoTracking();
+
+        if (filter != null)
+            q = q.Where(filter);
+
+        return await q.CountAsync();
+    }
     
     public IAsyncEnumerable<T> Query(
         Expression<Func<T, bool>>? filter = null,
         Func<IQueryable<T>, IOrderedQueryable<T>>? order = null,
-        params string[] includes
-        )
+        string[]? includes = null,
+        int? skip = null,
+        int? take = null)
     {
         IQueryable<T> q = _dbSet.AsNoTracking();
 
@@ -28,9 +39,15 @@ public class Repository<T> : IRepository<T>
         if (order != null)
             q = order(q);
 
-        if (includes.Any())
+        if (includes != null && includes.Any())
             q = includes.Aggregate(q, (sq, name) => sq.Include(name));
 
+        if (skip != null)
+            q = q.Skip(skip.Value);
+
+        if (take != null)
+            q = q.Take(take.Value);
+        
         return q.AsAsyncEnumerable();
     }
 

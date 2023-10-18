@@ -18,7 +18,7 @@ public class DeleteCatInteractor
         var repo = _unitOfWork.GetRepository<Cat>();
 
         var existingCat = await repo
-            .Query(c => c.Id == id, includes: nameof(Cat.Measurements))
+            .Query(c => c.Id == id, includes: new [] { nameof(Cat.Measurements) })
             .SingleOrDefaultAsync();
 
         if (existingCat is null)

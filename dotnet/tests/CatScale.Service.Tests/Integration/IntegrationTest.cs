@@ -1,7 +1,11 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Text.Json;
 using CatScale.Service.Model.Authentication;
 using CatScale.Service.Model.Cat;
 using CatScale.Service.Model.ScaleEvent;
 using CatScale.Service.Model.Toilet;
+using CatScale.Service.Model.User;
 using CatScale.Service.Tests.Utils;
 
 namespace CatScale.Service.Tests.Integration;
@@ -39,6 +43,24 @@ public abstract class IntegrationTest
         (await Client.PostAsync("api/Authentication/Logout", null))
             .EnsureSuccessStatusCode();
     }
+
+    protected async Task<UserApiKeyDto[]> GetApiKeys()
+        => await Client.GetFromJsonAsync<UserApiKeyDto[]>("api/User/GetApiKeys") ??
+           throw new Exception("Failed to deserialize response");
+
+    protected async Task<UserApiKeyDto> CreateApiKey(DateTime? expirationDate)
+    {
+        var response = (await Client.PostAsJsonAsync("api/User/CreateApiKey",
+                new CreateApiKeyRequest(expirationDate)))
+            .EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<UserApiKeyDto>() ??
+               throw new Exception("Failed to deserialize response");
+    }
+
+    protected async Task DeleteApiKey(int apiKeyId)
+        => (await Client.DeleteAsync($"api/User/DeleteApiKey/{apiKeyId}"))
+            .EnsureSuccessStatusCode();
 
 
     protected async Task<ToiletDto[]> GetAllToilets()
@@ -133,15 +155,56 @@ public abstract class IntegrationTest
         => await Client.GetFromJsonAsync<ScaleEventDto[]>($"api/ScaleEvent/GetAll") ??
            throw new Exception("Failed to deserialize response");
 
-    protected async Task CreateScaleEvent(NewScaleEvent scaleEvent)
+    protected async Task<ScaleEventDto> GetScaleEvent(int id)
+            => await Client.GetFromJsonAsync<ScaleEventDto>($"api/ScaleEvent/GetOne/{id}")
+               ?? throw new Exception("Failed to deserialize response");
+    
+    protected async Task<ScaleEventDto> CreateScaleEvent(NewScaleEvent scaleEvent)
     {
         var response = await Client.PostAsJsonAsync("api/ScaleEvent/Create", scaleEvent);
+
+        Output.WriteLine($"Http status: {response.StatusCode}");
+
+        var content = await response.Content.ReadAsStringAsync();
+        Output.WriteLine($"Http response: {content}");
+
         response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<ScaleEventDto>() ??
+               throw new Exception("Failed to deserialize response");
     }
-    
-    
-    
-    
+
+    protected async Task<ScaleEventDto> CreateScaleEventWithApiKey(NewScaleEvent scaleEvent, string apiKey)
+    {
+        var httpRequestMessage = new HttpRequestMessage
+        {
+            Method = HttpMethod.Post,
+            RequestUri = new Uri("api/ScaleEvent/Create", UriKind.Relative),
+            Headers =
+            {
+                { HttpRequestHeader.Authorization.ToString(), "ApiKey" },
+                { "ApiKey", apiKey },
+                { HttpRequestHeader.Accept.ToString(), "application/json" },
+                { HttpRequestHeader.ContentType.ToString(), "application/json" },
+            },
+            Content = new StringContent(
+                JsonSerializer.Serialize(scaleEvent),
+                new MediaTypeHeaderValue("application/json")),
+        };
+
+        var response = await Client.SendAsync(httpRequestMessage);
+
+        Output.WriteLine($"Http status: {response.StatusCode}");
+
+        var content = await response.Content.ReadAsStringAsync();
+        Output.WriteLine($"Http response: {content}");
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<ScaleEventDto>() ??
+               throw new Exception("Failed to deserialize response");
+    }
+
     // public async Task DeleteScaleEvent(int id)
     //     => (await Client.DeleteAsync($"api/ScaleEvent/Delete/{id}"))
     //         .EnsureSuccessStatusCode();

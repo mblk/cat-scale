@@ -37,15 +37,15 @@ public class ScaleEventController : ControllerBase
         [FromQuery] int? take)
     {
         _logger.LogInformation("GetAll {ToiledId} {Skip} {Take}", toiletId, skip, take);
-        
+
         var response = await interactor
             .GetAllScaleEvents(new IGetAllScaleEventsInteractor.Request(toiletId, skip, take));
-            
+
         var scaleEvents = response.ScaleEvents
             .Select(DataMapper.MapScaleEvent);
 
         Response.Headers.Add("X-Total-Count", response.Count.ToString());
-        
+
         return Ok(scaleEvents);
     }
 
@@ -59,10 +59,9 @@ public class ScaleEventController : ControllerBase
 
         return Ok(DataMapper.MapScaleEvent(response.ScaleEvent));
     }
-    
-    // The registered schemes are: Identity.Application, Identity.External, Identity.TwoFactorRememberMe, Identity.TwoFactorUserId, ApiKey
-    //[Authorize(AuthenticationSchemes = "ApiKey")]
-    //[Authorize(AuthenticationSchemes = "ApiKey,Cookies", Roles = ApplicationRoles.Admin)]
+
+    // TODO does not work if 'Roles' is set ??
+    //[Authorize(AuthenticationSchemes = "ApiKey, Identity.Application", Roles = ApplicationRoles.Admin)]
     [Authorize(AuthenticationSchemes = "ApiKey, Identity.Application")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] NewScaleEvent newScaleEvent)
@@ -77,10 +76,10 @@ public class ScaleEventController : ControllerBase
         double humidity = newScaleEvent.Humidity!.Value;
         double pressure = newScaleEvent.Pressure!.Value;
 
-        _logger.LogInformation("New cat scale event: {newScaleEvent}", newScaleEvent);
+        _logger.LogInformation("New cat scale event: {NewScaleEvent}", newScaleEvent);
 
         // Check if dates are plausible.
-        if (endTime < startTime.AddSeconds(1))
+        if (endTime < startTime.AddSeconds(5))
             return BadRequest("Event too short");
 
         if (endTime > startTime.AddMinutes(15))
@@ -91,16 +90,22 @@ public class ScaleEventController : ControllerBase
 
         if (startTime < DateTimeOffset.Now.AddDays(-7))
             return BadRequest("Start time is too far in the past");
-       
-        // TODO does not work on SQLite ...
+
         // Check if the event already exists.
-        //if (await _dbContext.ScaleEvents.AnyAsync(e =>
-        //        Math.Abs((e.StartTime - startTime).TotalSeconds) < 1 &&
-        //        Math.Abs((e.EndTime - endTime).TotalSeconds) < 1))
-        //{
-        //    _logger.LogError("Can't create scale event because it already exists: {newScaleEvent}", newScaleEvent);
-        //    return Conflict("Scale event already exists");
-        //}
+        var justBeforeStart = startTime.ToUniversalTime().AddSeconds(-1);
+        var justAfterStart = startTime.ToUniversalTime().AddSeconds(1);
+        if (await _dbContext.ScaleEvents.AnyAsync(e =>
+                justBeforeStart < e.StartTime && e.StartTime < justAfterStart &&
+                e.ToiletId == toiletId))
+        {
+            _logger.LogError("Can't create scale event because it already exists: {newScaleEvent}", newScaleEvent);
+            return Conflict("Scale event already exists");
+        }
+
+        //
+        if (newScaleEvent.StablePhases!.Any(e =>
+                e.Timestamp!.Value.AddSeconds(-e.Length!.Value) < startTime || e.Timestamp > endTime))
+            return BadRequest("Stable phase outside of event bounds");
 
         // Lookup required data.
         var toilet = await _dbContext.Toilets
@@ -120,11 +125,11 @@ public class ScaleEventController : ControllerBase
             ToiletId = toilet.Id,
             StartTime = startTime.ToUniversalTime(),
             EndTime = endTime.ToUniversalTime(),
-            StablePhases = newScaleEvent.StablePhases.Select(x => new StablePhase()
+            StablePhases = newScaleEvent.StablePhases!.Select(x => new StablePhase()
             {
-                Timestamp = x.Timestamp.ToUniversalTime(),
-                Length = x.Length,
-                Value = x.Value
+                Timestamp = x.Timestamp!.Value.ToUniversalTime(),
+                Length = x.Length!.Value,
+                Value = x.Value!.Value
             }).ToList(),
             Temperature = temperature,
             Humidity = humidity,
@@ -137,7 +142,7 @@ public class ScaleEventController : ControllerBase
         await _dbContext.SaveChangesAsync();
 
         _notificationService.NotifyScaleEventsChanged();
-        
+
         // Done.
         return CreatedAtAction(nameof(GetOne),
             new { Id = scaleEvent.Id },
@@ -161,7 +166,7 @@ public class ScaleEventController : ControllerBase
 
         _dbContext.ScaleEvents.Remove(scaleEvent);
         await _dbContext.SaveChangesAsync();
-        
+
         _notificationService.NotifyScaleEventsChanged();
 
         return Ok();
@@ -194,7 +199,7 @@ public class ScaleEventController : ControllerBase
         await _dbContext.SaveChangesAsync();
 
         _notificationService.NotifyScaleEventsChanged();
-        
+
         return Ok();
     }
 
@@ -222,7 +227,7 @@ public class ScaleEventController : ControllerBase
         await _dbContext.SaveChangesAsync();
 
         _notificationService.NotifyScaleEventsChanged();
-        
+
         return Ok();
     }
 
@@ -238,7 +243,7 @@ public class ScaleEventController : ControllerBase
         await _dbContext.SaveChangesAsync();
 
         _notificationService.NotifyScaleEventsChanged();
-        
+
         return Ok();
     }
 
@@ -298,7 +303,7 @@ public class ScaleEventController : ControllerBase
             .Where(c => c.Type == CatType.Active)
             .Select(c => c.Id)
             .ToArray();
-        
+
         var result = new List<PooCount>();
 
         var toilets = _dbContext.Toilets
@@ -322,7 +327,7 @@ public class ScaleEventController : ControllerBase
                     e.StartTime > lastCleaningTime &&
                     e.Measurement != null &&
                     activeCats.Contains(e.Measurement.CatId // TODO check how this translates to sql
-                ));
+                    ));
 
             result.Add(new PooCount(toilet.Id, numMeasurementsSinceLastCleaning));
         }
@@ -334,20 +339,20 @@ public class ScaleEventController : ControllerBase
     public async Task Subscribe(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Streaming events ...");
-        
+
         Response.Headers.Add("Content-Type", "text/event-stream");
         Response.Headers.Add("Cache-Control", "no-cache");
         Response.Headers.Add("Connection", "keep-alive");
         Response.Headers.Add("X-Accel-Buffering", "no");
-        
+
         _notificationService.ScaleEventsChanged += handler;
-        
+
         async void handler()
         {
             try
             {
                 _logger.LogInformation($"Sending change event ...");
-                
+
                 await Response.WriteAsync($"data: ScaleEventsChanged\n\n", cancellationToken);
                 await Response.Body.FlushAsync(cancellationToken);
             }

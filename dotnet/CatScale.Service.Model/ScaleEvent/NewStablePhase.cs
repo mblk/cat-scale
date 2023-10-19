@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using JetBrains.Annotations;
 
 namespace CatScale.Service.Model.ScaleEvent;
@@ -5,7 +6,8 @@ namespace CatScale.Service.Model.ScaleEvent;
 [PublicAPI]
 public record NewStablePhase
 (
-    DateTimeOffset Timestamp,
-    double Length,
-    double Value
+    // Note: Types are nullable to allow for proper model binding validation.
+    [Required] DateTimeOffset? Timestamp,
+    [Required] double? Length,
+    [Required] double? Value
 );

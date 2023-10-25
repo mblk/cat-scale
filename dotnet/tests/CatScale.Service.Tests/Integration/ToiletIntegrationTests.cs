@@ -12,7 +12,7 @@ public class ToiletIntegrationTests : IntegrationTest
     [Fact]
     public async Task GetAll_Should_ReturnEmptyList_When_NoToiletsExist()
     {
-        var toilets = await GetAllToilets();
+        var toilets = await Toilet.GetAll();
 
         Assert.Empty(toilets);
     }
@@ -21,11 +21,11 @@ public class ToiletIntegrationTests : IntegrationTest
     public async Task GetAll_Should_ReturnToilets_When_ToiletsExists()
     {
         await Login();
-        await CreateToilet("toilet1", "desc1");
-        await CreateToilet("toilet2", "desc2");
+        await Toilet.Create("toilet1", "desc1");
+        await Toilet.Create("toilet2", "desc2");
         await Logout();
 
-        var toilets = await GetAllToilets();
+        var toilets = await Toilet.GetAll();
 
         Assert.Collection(toilets, t =>
         {
@@ -42,7 +42,7 @@ public class ToiletIntegrationTests : IntegrationTest
     public async Task GetOne_Should_ReturnNotFound_When_ToiletDoesNotExist()
     {
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
-            async () => await GetToilet(1));
+            async () => await Toilet.Get(1));
 
         Assert.Equal(HttpStatusCode.NotFound, exception.StatusCode);
     }
@@ -51,10 +51,10 @@ public class ToiletIntegrationTests : IntegrationTest
     public async Task GetOne_Should_ReturnToilet_When_ToiletExists()
     {
         await Login();
-        var createdToilet = await CreateToilet("toilet", "desc");
+        var createdToilet = await Toilet.Create("toilet", "desc");
         await Logout();
 
-        var returnedToilet = await GetToilet(createdToilet.Id);
+        var returnedToilet = await Toilet.Get(createdToilet.Id);
 
         Assert.Equal(createdToilet.Id, returnedToilet.Id);
         Assert.Equal("toilet", returnedToilet.Name);
@@ -65,7 +65,7 @@ public class ToiletIntegrationTests : IntegrationTest
     public async Task Create_Should_NotCreateToilet_When_NotAuthorized()
     {
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
-            async () => await CreateToilet("toilet", "desc"));
+            async () => await Toilet.Create("toilet", "desc"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, exception.StatusCode);
     }
@@ -74,7 +74,7 @@ public class ToiletIntegrationTests : IntegrationTest
     public async Task Create_Should_CreateToilet_When_Authorized()
     {
         await Login();
-        var createdToilet = await CreateToilet("toilet", "desc");
+        var createdToilet = await Toilet.Create("toilet", "desc");
 
         Assert.True(createdToilet.Id > 0);
         Assert.Equal("toilet", createdToilet.Name);
@@ -85,11 +85,11 @@ public class ToiletIntegrationTests : IntegrationTest
     public async Task Update_Should_NotUpdateToilet_When_NotAuthorized()
     {
         await Login();
-        var createdToilet = await CreateToilet("toilet", "desc");
+        var createdToilet = await Toilet.Create("toilet", "desc");
         await Logout();
 
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
-            async () => await UpdateToilet(createdToilet.Id, "toilet2", "desc2"));
+            async () => await Toilet.Update(createdToilet.Id, "toilet2", "desc2"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, exception.StatusCode);
     }
@@ -98,11 +98,11 @@ public class ToiletIntegrationTests : IntegrationTest
     public async Task Update_Should_UpdateToilet_When_Authorized()
     {
         await Login();
-        var createdToilet = await CreateToilet("toilet", "desc");
+        var createdToilet = await Toilet.Create("toilet", "desc");
 
-        await UpdateToilet(createdToilet.Id, "toilet2", "desc2");
+        await Toilet.Update(createdToilet.Id, "toilet2", "desc2");
 
-        var toilets = await GetAllToilets();
+        var toilets = await Toilet.GetAll();
         Assert.Collection(toilets, t =>
         {
             Assert.Equal(createdToilet.Id, t.Id);
@@ -115,11 +115,11 @@ public class ToiletIntegrationTests : IntegrationTest
     public async Task Delete_Should_NotDeleteToilet_When_NotAuthorized()
     {
         await Login();
-        var createdToilet = await CreateToilet("toilet", "desc");
+        var createdToilet = await Toilet.Create("toilet", "desc");
         await Logout();
 
         var exception = await Assert.ThrowsAsync<HttpRequestException>(
-            async () => await DeleteToilet(createdToilet.Id));
+            async () => await Toilet.Delete(createdToilet.Id));
 
         Assert.Equal(HttpStatusCode.Unauthorized, exception.StatusCode);
     }
@@ -128,11 +128,11 @@ public class ToiletIntegrationTests : IntegrationTest
     public async Task Delete_Should_DeleteToilet_When_Authorized()
     {
         await Login();
-        var createdToilet = await CreateToilet("toilet", "desc");
+        var createdToilet = await Toilet.Create("toilet", "desc");
 
-        await DeleteToilet(createdToilet.Id);
+        await Toilet.Delete(createdToilet.Id);
 
-        var toilets = await GetAllToilets();
+        var toilets = await Toilet.GetAll();
         Assert.Empty(toilets);
     }
 }

@@ -3,7 +3,6 @@ using CatScale.Service.Model.Cat;
 using CatScale.Service.Model.ScaleEvent;
 using CatScale.Service.Model.Toilet;
 using CatScale.Service.Tests.Utils;
-using JsonSubTypes;
 
 namespace CatScale.Service.Tests.Integration;
 
@@ -17,7 +16,7 @@ public class ScaleEventIntegrationTests : IntegrationTest
     [Fact]
     public async Task GetAll_Should_ReturnEmptyList_When_NoToiletsExist()
     {
-        var scaleEvents = await GetAllScaleEvents();
+        var scaleEvents = await ScaleEvent.GetAll();
 
         Assert.Empty(scaleEvents);
     }
@@ -26,10 +25,10 @@ public class ScaleEventIntegrationTests : IntegrationTest
     public async Task GetAll_Should_ReturnEmptyList_When_NoEventsExist()
     {
         await Login();
-        await CreateToilet("toilet", "desc");
+        await Toilet.Create("toilet", "desc");
         await Logout();
 
-        var scaleEvents = await GetAllScaleEvents();
+        var scaleEvents = await ScaleEvent.GetAll();
 
         Assert.Empty(scaleEvents);
     }
@@ -38,7 +37,7 @@ public class ScaleEventIntegrationTests : IntegrationTest
     public async Task GetAll_Should_ReturnEvents_When_EventsExist()
     {
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
+        var toilet = await Toilet.Create("toilet", "desc");
 
         var t0 = DateTimeOffset.Now;
         var tStart1 = t0.AddMinutes(-5);
@@ -46,12 +45,12 @@ public class ScaleEventIntegrationTests : IntegrationTest
         var tStart2 = t0.AddMinutes(-3);
         var tEnd2 = tStart2.AddSeconds(10);
 
-        await CreateScaleEvent(new NewScaleEvent(toilet.Id, tStart1, tEnd1,
+        await ScaleEvent.Create(new NewScaleEvent(toilet.Id, tStart1, tEnd1,
             Array.Empty<NewStablePhase>(), 22.0d, 50.0d, 100000.0d));
-        await CreateScaleEvent(new NewScaleEvent(toilet.Id, tStart2, tEnd2,
+        await ScaleEvent.Create(new NewScaleEvent(toilet.Id, tStart2, tEnd2,
             Array.Empty<NewStablePhase>(), 23.0d, 51.0d, 100001.0d));
 
-        var scaleEvents = await GetAllScaleEvents();
+        var scaleEvents = await ScaleEvent.GetAll();
 
         // Newest first
         Assert.Collection(scaleEvents, e =>
@@ -76,7 +75,7 @@ public class ScaleEventIntegrationTests : IntegrationTest
     [Fact]
     public async Task GetOne_Should_ReturnNotFound_When_EventDoesNotExist()
     {
-        var exception = await Assert.ThrowsAsync<HttpRequestException>(async () => await GetScaleEvent(1));
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(async () => await ScaleEvent.Get(1));
         Assert.Equal(HttpStatusCode.NotFound, exception.StatusCode);
     }
 
@@ -88,16 +87,16 @@ public class ScaleEventIntegrationTests : IntegrationTest
         var tEnd = tStart.AddSeconds(10);
 
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
-        var apiKey = (await CreateApiKey(null)).Value;
-        var createdScaleEvent = await CreateScaleEventWithApiKey(
+        var toilet = await Toilet.Create("toilet", "desc");
+        var apiKey = (await User.CreateApiKey(null)).Value;
+        var createdScaleEvent = await ScaleEvent.CreateWithApiKey(
             new NewScaleEvent(toilet.Id, tStart, tEnd,
                 Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d),
             apiKey);
         await Logout();
 
-        var returnedScaleEvent = await GetScaleEvent(createdScaleEvent.Id);
+        var returnedScaleEvent = await ScaleEvent.Get(createdScaleEvent.Id);
         
         Assert.Equal(createdScaleEvent.Id, returnedScaleEvent.Id);
         Assert.Equal(tStart, returnedScaleEvent.Start, new DateTimeOffsetComparer(TimeSpan.FromSeconds(0.1d)));
@@ -122,11 +121,11 @@ public class ScaleEventIntegrationTests : IntegrationTest
         var tEnd = tPhase1.AddSeconds(60);
 
         await Login();
-        var createdToilet = await CreateToilet("toilet", "desc");
-        var createdCat = await CreateCat(CatTypeDto.Active, "cat", new DateOnly(1986, 5, 20));
-        _ = await CreateCatWeight(createdCat.Id, tWeighing, 5000.0d);
+        var createdToilet = await Toilet.Create("toilet", "desc");
+        var createdCat = await Cat.Create(CatTypeDto.Active, "cat", new DateOnly(1986, 5, 20));
+        _ = await CatWeight.Create(createdCat.Id, tWeighing, 5000.0d);
 
-        await CreateScaleEvent(new NewScaleEvent(createdToilet.Id, tStart, tEnd,
+        await ScaleEvent.Create(new NewScaleEvent(createdToilet.Id, tStart, tEnd,
             new NewStablePhase[]
             {
                 new(tPhase1, 5.0d, 5009.0d),
@@ -135,7 +134,7 @@ public class ScaleEventIntegrationTests : IntegrationTest
             },
             22.0d, 50.0d, 100000.0d));
 
-        var scaleEvents = await GetAllScaleEvents();
+        var scaleEvents = await ScaleEvent.GetAll();
 
         Assert.Collection(scaleEvents, e =>
         {
@@ -174,59 +173,59 @@ public class ScaleEventIntegrationTests : IntegrationTest
     public async Task Create_Should_ReturnBadRequest_When_MissingParameters()
     {
         await Login();
-        ToiletDto createdToilet = await CreateToilet("toilet", "desc");
+        ToiletDto createdToilet = await Toilet.Create("toilet", "desc");
 
         var t0 = DateTimeOffset.Now;
         var tStart = t0.AddMinutes(-5);
         var tPhase1 = tStart.AddSeconds(30); // TODO end of stable phase or start?
         var tEnd = tPhase1.AddSeconds(60);
 
-        async Task requestWithMissingToiletId() => await CreateScaleEvent(
+        async Task requestWithMissingToiletId() => await ScaleEvent.Create(
             new NewScaleEvent(null, tStart, tEnd, Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d));
 
-        async Task requestWithMissingStartTime() => await CreateScaleEvent(
+        async Task requestWithMissingStartTime() => await ScaleEvent.Create(
             new NewScaleEvent(createdToilet.Id, null, tEnd, Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d));
 
-        async Task requestWithMissingEndTime() => await CreateScaleEvent(
+        async Task requestWithMissingEndTime() => await ScaleEvent.Create(
             new NewScaleEvent(createdToilet.Id, tStart, null, Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d));
 
-        async Task requestWithMissingStablePhases() => await CreateScaleEvent(
+        async Task requestWithMissingStablePhases() => await ScaleEvent.Create(
             new NewScaleEvent(createdToilet.Id, tStart, tEnd, null,
                 22.0d, 50.0d, 100000.0d));
 
-        async Task requestWithMissingTemperature() => await CreateScaleEvent(
+        async Task requestWithMissingTemperature() => await ScaleEvent.Create(
             new NewScaleEvent(createdToilet.Id, tStart, tEnd, Array.Empty<NewStablePhase>(),
                 null, 50.0d, 100000.0d));
 
-        async Task requestWithMissingHumidity() => await CreateScaleEvent(
+        async Task requestWithMissingHumidity() => await ScaleEvent.Create(
             new NewScaleEvent(createdToilet.Id, tStart, tEnd, Array.Empty<NewStablePhase>(),
                 22.0d, null, 100000.0d));
 
-        async Task requestWithMissingPressure() => await CreateScaleEvent(
+        async Task requestWithMissingPressure() => await ScaleEvent.Create(
             new NewScaleEvent(createdToilet.Id, tStart, tEnd, Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, null));
 
-        async Task requestWithMissingStablePhaseTimestamp() => await CreateScaleEvent(
+        async Task requestWithMissingStablePhaseTimestamp() => await ScaleEvent.Create(
             new NewScaleEvent(createdToilet.Id, tStart, tEnd, new NewStablePhase[]
                 {
-                    new NewStablePhase(null, 10.0d, 5000.0d)
+                    new(null, 10.0d, 5000.0d)
                 },
                 22.0d, 50.0d, 100000.0d));
 
-        async Task requestWithMissingStablePhaseLength() => await CreateScaleEvent(
+        async Task requestWithMissingStablePhaseLength() => await ScaleEvent.Create(
             new NewScaleEvent(createdToilet.Id, tStart, tEnd, new NewStablePhase[]
                 {
-                    new NewStablePhase(tPhase1, null, 5000.0d)
+                    new(tPhase1, null, 5000.0d)
                 },
                 22.0d, 50.0d, 100000.0d));
 
-        async Task requestWithMissingStablePhaseValue() => await CreateScaleEvent(
+        async Task requestWithMissingStablePhaseValue() => await ScaleEvent.Create(
             new NewScaleEvent(createdToilet.Id, tStart, tEnd, new NewStablePhase[]
                 {
-                    new NewStablePhase(tPhase1, 10.0d, null)
+                    new(tPhase1, 10.0d, null)
                 },
                 22.0d, 50.0d, 100000.0d));
 
@@ -260,7 +259,7 @@ public class ScaleEventIntegrationTests : IntegrationTest
         var tStart = t0.AddMinutes(-5);
         var tEnd = tStart.AddSeconds(60);
 
-        async Task request() => await CreateScaleEvent(
+        async Task request() => await ScaleEvent.Create(
             new NewScaleEvent(123, tStart, tEnd,
                 Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d));
@@ -275,13 +274,13 @@ public class ScaleEventIntegrationTests : IntegrationTest
         // Minimum time: 5s
 
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
+        var toilet = await Toilet.Create("toilet", "desc");
 
         var t0 = DateTimeOffset.Now;
         var tStart = t0.AddMinutes(-5);
         var tEnd = tStart.AddSeconds(1);
 
-        async Task request() => await CreateScaleEvent(
+        async Task request() => await ScaleEvent.Create(
             new NewScaleEvent(toilet.Id, tStart, tEnd,
                 Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d));
@@ -296,13 +295,13 @@ public class ScaleEventIntegrationTests : IntegrationTest
         // Maximum time: 15min
 
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
+        var toilet = await Toilet.Create("toilet", "desc");
 
         var t0 = DateTimeOffset.Now;
         var tStart = t0.AddMinutes(-60);
         var tEnd = tStart.AddMinutes(30);
 
-        async Task request() => await CreateScaleEvent(
+        async Task request() => await ScaleEvent.Create(
             new NewScaleEvent(toilet.Id, tStart, tEnd,
                 Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d));
@@ -315,13 +314,13 @@ public class ScaleEventIntegrationTests : IntegrationTest
     public async Task Create_Should_ReturnBadRequest_When_EventIsInTheFuture()
     {
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
+        var toilet = await Toilet.Create("toilet", "desc");
 
         var t0 = DateTimeOffset.Now;
         var tStart = t0.AddMinutes(60);
         var tEnd = tStart.AddMinutes(1);
 
-        async Task request() => await CreateScaleEvent(
+        async Task request() => await ScaleEvent.Create(
             new NewScaleEvent(toilet.Id, tStart, tEnd,
                 Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d));
@@ -336,13 +335,13 @@ public class ScaleEventIntegrationTests : IntegrationTest
         // Max age: 7days
 
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
+        var toilet = await Toilet.Create("toilet", "desc");
 
         var t0 = DateTimeOffset.Now;
         var tStart = t0.AddDays(-14);
         var tEnd = tStart.AddMinutes(1);
 
-        async Task request() => await CreateScaleEvent(
+        async Task request() => await ScaleEvent.Create(
             new NewScaleEvent(toilet.Id, tStart, tEnd,
                 Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d));
@@ -355,16 +354,16 @@ public class ScaleEventIntegrationTests : IntegrationTest
     public async Task Create_Should_ReturnBadRequest_When_StablePhaseStartsBeforeScaleEvent()
     {
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
+        var toilet = await Toilet.Create("toilet", "desc");
 
         var t0 = DateTimeOffset.Now;
         var tStart = t0.AddMinutes(-5);
         var tPhaseEnd = tStart.AddSeconds(4); // starts 1s before scale event
         var tEnd = tStart.AddSeconds(10);
 
-        async Task request() => await CreateScaleEvent(
+        async Task request() => await ScaleEvent.Create(
             new NewScaleEvent(toilet.Id, tStart, tEnd,
-                new NewStablePhase[] { new NewStablePhase(tPhaseEnd, 5.0d, 5000.0d) },
+                new NewStablePhase[] { new(tPhaseEnd, 5.0d, 5000.0d) },
                 22.0d, 50.0d, 100000.0d));
 
         var response = await Assert.ThrowsAsync<HttpRequestException>(request);
@@ -375,16 +374,16 @@ public class ScaleEventIntegrationTests : IntegrationTest
     public async Task Create_Should_ReturnBadRequest_When_StablePhaseEndsAfterScaleEvent()
     {
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
+        var toilet = await Toilet.Create("toilet", "desc");
 
         var t0 = DateTimeOffset.Now;
         var tStart = t0.AddMinutes(-5);
         var tPhaseEnd = tStart.AddSeconds(11); // ends 1s after scale event
         var tEnd = tStart.AddSeconds(10);
 
-        async Task request() => await CreateScaleEvent(
+        async Task request() => await ScaleEvent.Create(
             new NewScaleEvent(toilet.Id, tStart, tEnd,
-                new NewStablePhase[] { new NewStablePhase(tPhaseEnd, 5.0d, 5000.0d) },
+                new NewStablePhase[] { new(tPhaseEnd, 5.0d, 5000.0d) },
                 22.0d, 50.0d, 100000.0d));
 
         var response = await Assert.ThrowsAsync<HttpRequestException>(request);
@@ -392,16 +391,16 @@ public class ScaleEventIntegrationTests : IntegrationTest
     }
 
     [Fact]
-    public async Task Create_Should_ReturnConflict_When_SameEventAlreadyExists()
+    public async Task Create_Should_ReturnBadRequest_When_SameEventAlreadyExists()
     {
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
+        var toilet = await Toilet.Create("toilet", "desc");
 
         var t0 = DateTimeOffset.Now;
         var tStart = t0.AddMinutes(-5);
         var tEnd = tStart.AddSeconds(10);
 
-        async Task request() => await CreateScaleEvent(
+        async Task request() => await ScaleEvent.Create(
             new NewScaleEvent(toilet.Id, tStart, tEnd,
                 Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d));
@@ -409,21 +408,21 @@ public class ScaleEventIntegrationTests : IntegrationTest
         await request();
 
         var response = await Assert.ThrowsAsync<HttpRequestException>(request);
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
     public async Task Create_Should_ReturnUnauthorized_When_NotAuthorized()
     {
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
+        var toilet = await Toilet.Create("toilet", "desc");
         await Logout();
 
         var t0 = DateTimeOffset.Now;
         var tStart = t0.AddMinutes(-5);
         var tEnd = tStart.AddSeconds(10);
 
-        async Task request() => await CreateScaleEvent(
+        async Task request() => await ScaleEvent.Create(
             new NewScaleEvent(toilet.Id, tStart, tEnd,
                 Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d));
@@ -436,8 +435,8 @@ public class ScaleEventIntegrationTests : IntegrationTest
     public async Task Create_Should_ReturnUnauthorized_When_UsingInvalidApiKey()
     {
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
-        var apiKey = (await CreateApiKey(null)).Value;
+        var toilet = await Toilet.Create("toilet", "desc");
+        var apiKey = (await User.CreateApiKey(null)).Value;
         var invalidApiKey = "abc" + apiKey.Substring(3);
         await Logout();
 
@@ -445,7 +444,7 @@ public class ScaleEventIntegrationTests : IntegrationTest
         var tStart = t0.AddMinutes(-5);
         var tEnd = tStart.AddSeconds(10);
 
-        async Task request() => await CreateScaleEventWithApiKey(
+        async Task request() => await ScaleEvent.CreateWithApiKey(
             new NewScaleEvent(toilet.Id, tStart, tEnd,
                 Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d),
@@ -459,15 +458,15 @@ public class ScaleEventIntegrationTests : IntegrationTest
     public async Task Create_Should_CreateEvent_When_UsingValidApiKey()
     {
         await Login();
-        var toilet = await CreateToilet("toilet", "desc");
-        var apiKey = (await CreateApiKey(null)).Value;
+        var toilet = await Toilet.Create("toilet", "desc");
+        var apiKey = (await User.CreateApiKey(null)).Value;
         await Logout();
 
         var t0 = DateTimeOffset.Now;
         var tStart = t0.AddMinutes(-5);
         var tEnd = tStart.AddSeconds(10);
 
-        var scaleEvent = await CreateScaleEventWithApiKey(
+        var scaleEvent = await ScaleEvent.CreateWithApiKey(
             new NewScaleEvent(toilet.Id, tStart, tEnd,
                 Array.Empty<NewStablePhase>(),
                 22.0d, 50.0d, 100000.0d),
@@ -482,4 +481,5 @@ public class ScaleEventIntegrationTests : IntegrationTest
     // Cleaning
     // Measurement
     // Classification
+    // Notification
 }

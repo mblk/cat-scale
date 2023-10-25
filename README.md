@@ -8,3 +8,6 @@ Used technologies:
 - [InfluxDB](https://www.influxdata.com/)
 - [ASP.NET Core](https://learn.microsoft.com/en-us/aspnet/core/introduction-to-aspnet-core) + [Blazor](https://dotnet.microsoft.com/en-us/apps/aspnet/web-apps/blazor)
 - [Postgresql](https://www.postgresql.org/)
+
+Live demo:
+- [mblk.info/cathub](https://mblk.info/cathub/)

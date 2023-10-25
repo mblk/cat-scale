@@ -102,6 +102,10 @@ builder.Services
     .AddTransient<IGetOneScaleEventInteractor, GetOneScaleEventInteractor>()
     .AddTransient<ICreateScaleEventInteractor, CreateScaleEventInteractor>()
     .AddTransient<IClassifyScaleEventInteractor, ClassifyScaleEventInteractor>()
+    .AddTransient<IDeleteScaleEventInteractor, DeleteScaleEventInteractor>()
+    
+    .AddTransient<IGetScaleEventStatsInteractor, GetScaleEventStatsInteractor>()
+    .AddTransient<IGetPooCountInteractor, GetPooCountInteractor>()
     
     .AddTransient<IGetAllToiletsInteractor, GetAllToiletsInteractor>()
     .AddTransient<IGetOneToiletInteractor, GetOneToiletInteractor>()

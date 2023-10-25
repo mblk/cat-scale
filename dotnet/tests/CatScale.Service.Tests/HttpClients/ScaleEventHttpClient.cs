@@ -68,27 +68,19 @@ public class ScaleEventHttpClient
                throw new Exception("Failed to deserialize response");
     }
 
-// public async Task DeleteScaleEvent(int id)
-//     => (await _client.DeleteAsync($"api/ScaleEvent/Delete/{id}"))
-//         .EnsureSuccessStatusCode();
-//
-// public async Task ClassifyScaleEvent(int id)
-//     => (await _client.PostAsync($"api/ScaleEvent/Classify/{id}", null))
-//         .EnsureSuccessStatusCode();
-//
-// public async Task ClassifyAllScaleEvents()
-//     => (await _client.PostAsync($"api/ScaleEvent/ClassifyAllEvents", null))
-//         .EnsureSuccessStatusCode();
-//
-// public async Task DeleteAllScaleEventClassifications()
-//     => (await _client.PostAsync($"api/ScaleEvent/DeleteAllClassifications", null))
-//         .EnsureSuccessStatusCode();
-//
-// public async Task<ScaleEventStats> GetScaleEventStats()
-//     => await _client.GetFromJsonAsync<ScaleEventStats>("api/ScaleEvent/GetStats") ??
-//        throw new Exception("Failed to deserialize response");
-//
-// public async Task<PooCount[]> GetPooCounts()
-//     => await _client.GetFromJsonAsync<PooCount[]>("api/ScaleEvent/GetPooCounts") ??
-//        throw new Exception("Failed to deserialize response");}
+    public async Task Delete(int id)
+        => (await _client.DeleteAsync($"api/ScaleEvent/Delete/{id}"))
+            .EnsureSuccessStatusCode();
+
+    public async Task Classify(int id)
+        => (await _client.PostAsync($"api/ScaleEvent/Classify/{id}", null))
+            .EnsureSuccessStatusCode();
+
+    public async Task<ScaleEventStats> GetStats()
+        => await _client.GetFromJsonAsync<ScaleEventStats>("api/ScaleEvent/GetStats") ??
+           throw new Exception("Failed to deserialize response");
+
+    public async Task<PooCount[]> GetPooCounts()
+        => await _client.GetFromJsonAsync<PooCount[]>("api/ScaleEvent/GetPooCounts") ??
+           throw new Exception("Failed to deserialize response");
 }

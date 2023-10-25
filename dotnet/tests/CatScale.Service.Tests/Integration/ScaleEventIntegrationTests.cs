@@ -97,7 +97,7 @@ public class ScaleEventIntegrationTests : IntegrationTest
         await Logout();
 
         var returnedScaleEvent = await ScaleEvent.Get(createdScaleEvent.Id);
-        
+
         Assert.Equal(createdScaleEvent.Id, returnedScaleEvent.Id);
         Assert.Equal(tStart, returnedScaleEvent.Start, new DateTimeOffsetComparer(TimeSpan.FromSeconds(0.1d)));
         Assert.Equal(tEnd, returnedScaleEvent.End, new DateTimeOffsetComparer(TimeSpan.FromSeconds(0.1d)));
@@ -474,6 +474,56 @@ public class ScaleEventIntegrationTests : IntegrationTest
 
         Assert.Equal(tStart, scaleEvent.Start, new DateTimeOffsetComparer(TimeSpan.FromSeconds(0.1d)));
         Assert.Equal(tEnd, scaleEvent.End, new DateTimeOffsetComparer(TimeSpan.FromSeconds(0.1d)));
+    }
+
+    [Fact]
+    public async Task Delete_Should_ReturnNotAuthorized_When_NotAuthorized()
+    {
+        var t0 = DateTimeOffset.Now;
+        var tStart = t0.AddMinutes(-5);
+        var tEnd = tStart.AddSeconds(10);
+
+        await Login();
+        var toilet = await Toilet.Create("toilet", "desc");
+        var createdEvent = await ScaleEvent.Create(new NewScaleEvent(toilet.Id, tStart, tEnd,
+            Array.Empty<NewStablePhase>(),
+            22.0d, 50.0d, 100000.0d));
+        await Logout();
+
+        var response = await Assert.ThrowsAsync<HttpRequestException>(
+            async () => await ScaleEvent.Delete(createdEvent.Id));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_Should_ReturnNotFound_When_EventDoesNotExist()
+    {
+        await Login();
+
+        var response = await Assert.ThrowsAsync<HttpRequestException>(
+            async () => await ScaleEvent.Delete(1));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_Should_DeleteEvent_When_EventExistsAndAuthorized()
+    {
+        var t0 = DateTimeOffset.Now;
+        var tStart = t0.AddMinutes(-5);
+        var tEnd = tStart.AddSeconds(10);
+
+        await Login();
+        var toilet = await Toilet.Create("toilet", "desc");
+        var createdEvent = await ScaleEvent.Create(new NewScaleEvent(toilet.Id, tStart, tEnd,
+            Array.Empty<NewStablePhase>(),
+            22.0d, 50.0d, 100000.0d));
+
+        await ScaleEvent.Delete(createdEvent.Id);
+
+        var scaleEvents = await ScaleEvent.GetAll();
+        Assert.Empty(scaleEvents);
     }
 
     // TODO:

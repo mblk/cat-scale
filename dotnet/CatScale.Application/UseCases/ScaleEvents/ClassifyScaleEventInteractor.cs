@@ -18,13 +18,16 @@ public class ClassifyScaleEventInteractor : IClassifyScaleEventInteractor
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClassificationService _classificationService;
+    private readonly INotificationService _notificationService;
 
     public ClassifyScaleEventInteractor(IUnitOfWork unitOfWork,
-        IClassificationService classificationService
+        IClassificationService classificationService,
+        INotificationService notificationService
         )
     {
         _unitOfWork = unitOfWork;
         _classificationService = classificationService;
+        _notificationService = notificationService;
     }
 
     public async Task<IClassifyScaleEventInteractor.Response> ClassifyScaleEvent(
@@ -55,6 +58,8 @@ public class ClassifyScaleEventInteractor : IClassifyScaleEventInteractor
 
         await _unitOfWork.SaveChangesAsync();
 
+        _notificationService.NotifyScaleEventsChanged();
+        
         return new IClassifyScaleEventInteractor.Response(scaleEvent);
     }
 }

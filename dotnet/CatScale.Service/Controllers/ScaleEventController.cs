@@ -1,12 +1,10 @@
 using CatScale.Application.Services;
 using CatScale.Application.UseCases.ScaleEvents;
-using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using CatScale.Service.Mapper;
 using CatScale.Service.Model.ScaleEvent;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CatScale.Service.Controllers;
 
@@ -15,14 +13,12 @@ namespace CatScale.Service.Controllers;
 public class ScaleEventController : ControllerBase
 {
     private readonly ILogger<ScaleEventController> _logger;
-    private readonly CatScaleDbContext _dbContext;
     private readonly INotificationService _notificationService;
 
-    public ScaleEventController(ILogger<ScaleEventController> logger, CatScaleDbContext dbContext,
+    public ScaleEventController(ILogger<ScaleEventController> logger, 
         INotificationService notificationService)
     {
         _logger = logger;
-        _dbContext = dbContext;
         _notificationService = notificationService;
     }
 
@@ -94,188 +90,70 @@ public class ScaleEventController : ControllerBase
     [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(
+        [FromServices] IDeleteScaleEventInteractor interactor,
         [FromRoute] int id)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        _logger.LogInformation($"Deleting scale event {id}");
-
-        var scaleEvent = await _dbContext.ScaleEvents
-            .SingleOrDefaultAsync(x => x.Id == id);
-
-        if (scaleEvent is null)
-            return NotFound();
-
-        _dbContext.ScaleEvents.Remove(scaleEvent);
-        await _dbContext.SaveChangesAsync();
-
-        _notificationService.NotifyScaleEventsChanged();
+        _ = await interactor.DeleteScaleEvent(
+            new IDeleteScaleEventInteractor.Request(
+                id));
 
         return Ok();
     }
 
     [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpPost("{id:int}")]
-    public async Task<IActionResult> Classify(int id)
+    public async Task<IActionResult> Classify(
+        [FromServices] IClassifyScaleEventInteractor interactor,
+        [FromRoute] int id)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        _logger.LogInformation($"Classifying scale event {id}");
-
-        var cats = await _dbContext.Cats
-            .AsNoTracking()
-            .Include(c => c.Weights)
-            .ToArrayAsync();
-
-        var scaleEvent = await _dbContext.ScaleEvents
-            .Include(x => x.StablePhases)
-            .Include(x => x.Cleaning)
-            .Include(x => x.Measurement)
-            .SingleOrDefaultAsync(x => x.Id == id);
-
-        if (scaleEvent is null)
-            return NotFound();
-
-        //_classificationService.ClassifyScaleEvent(cats, scaleEvent);
-        await _dbContext.SaveChangesAsync();
-
-        _notificationService.NotifyScaleEventsChanged();
-
-        return Ok();
-    }
-
-    [Authorize(Roles = ApplicationRoles.Admin)]
-    [HttpPost]
-    public async Task<IActionResult> ClassifyAllEvents()
-    {
-        _logger.LogInformation($"Classifying all scale events");
-
-        var cats = await _dbContext.Cats
-            .AsNoTracking()
-            .Include(c => c.Weights)
-            .ToArrayAsync();
-
-        var scaleEvents = _dbContext.ScaleEvents
-            .Include(x => x.StablePhases)
-            .Include(x => x.Cleaning)
-            .Include(x => x.Measurement);
-
-        foreach (var scaleEvent in scaleEvents)
-        {
-            //_classificationService.ClassifyScaleEvent(cats, scaleEvent);
-        }
-
-        await _dbContext.SaveChangesAsync();
-
-        _notificationService.NotifyScaleEventsChanged();
-
-        return Ok();
-    }
-
-    [Authorize(Roles = ApplicationRoles.Admin)]
-    [HttpPost]
-    public async Task<IActionResult> DeleteAllClassifications()
-    {
-        _logger.LogInformation($"Deleting all classifications");
-
-        _dbContext.Cleanings.RemoveRange(_dbContext.Cleanings);
-        _dbContext.Measurements.RemoveRange(_dbContext.Measurements);
-
-        await _dbContext.SaveChangesAsync();
-
-        _notificationService.NotifyScaleEventsChanged();
+        _ = await interactor.ClassifyScaleEvent(
+            new IClassifyScaleEventInteractor.Request(
+                id));
 
         return Ok();
     }
 
     [HttpGet]
-    public async Task<ActionResult<ScaleEventStats>> GetStats()
+    public async Task<ActionResult<ScaleEventStats>> GetStats(
+        [FromServices] IGetScaleEventStatsInteractor interactor)
     {
-        // TODO use client timezone
-        var tzi = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
-
-        var today = new DateTimeOffset(DateTime.UtcNow.Date);
-
-        today = tzi.IsDaylightSavingTime(today)
-            ? today.Add(-tzi.BaseUtcOffset).AddHours(-1)
-            : today.Add(-tzi.BaseUtcOffset);
-
-        var yesterday = today.AddDays(-1);
-
-        var numScaleEventsToday = await _dbContext.ScaleEvents
-            .Where(e => e.StartTime >= today)
-            .CountAsync();
-        var numScaleEventsYesterday = await _dbContext.ScaleEvents
-            .Where(e => e.StartTime >= yesterday && e.StartTime < today)
-            .CountAsync();
-        var numScaleEvents = await _dbContext.ScaleEvents.CountAsync();
-
-        var numCleaningToday = await _dbContext.Cleanings
-            .Where(c => c.Timestamp >= today)
-            .CountAsync();
-        var numCleaningYesterday = await _dbContext.Cleanings
-            .Where(c => c.Timestamp >= yesterday && c.Timestamp < today)
-            .CountAsync();
-        var numCleaning = await _dbContext.Cleanings.CountAsync();
-
-        var numMeasurementsToday = await _dbContext.Measurements
-            .Where(m => m.Timestamp >= today)
-            .CountAsync();
-        var numMeasurementsYesterday = await _dbContext.Measurements
-            .Where(m => m.Timestamp >= yesterday && m.Timestamp < today)
-            .CountAsync();
-        var numMeasurements = await _dbContext.Measurements.CountAsync();
-
-        // Ideas:
-        // - poos since last cleaning?
-        // - avg. events/measurements/cleanings per day?
-        // ... ?
+        // TODO use client timezone ?
+        
+        var response = await interactor.GetScaleEventStats(
+            new IGetScaleEventStatsInteractor.Request());
 
         return Ok(new ScaleEventStats(
-            new ScaleEventCounts(numScaleEvents, numCleaning, numMeasurements),
-            new ScaleEventCounts(numScaleEventsYesterday, numCleaningYesterday, numMeasurementsYesterday),
-            new ScaleEventCounts(numScaleEventsToday, numCleaningToday, numMeasurementsToday)));
+            AllTime: new ScaleEventCounts(
+                Total: response.AllTime.Total,
+                Cleanings: response.AllTime.Cleanings,
+                Measurements: response.AllTime.Measurements),
+            Yesterday: new ScaleEventCounts(
+                Total: response.Yesterday.Total,
+                Cleanings: response.Yesterday.Cleanings,
+                Measurements: response.Yesterday.Measurements),
+            Today: new ScaleEventCounts(
+                Total: response.Today.Total,
+                Cleanings: response.Today.Cleanings,
+                Measurements: response.Today.Measurements)));
     }
 
     [HttpGet]
-    public ActionResult<PooCount[]> GetPooCounts()
+    public async Task<ActionResult<PooCount[]>> GetPooCounts(
+        [FromServices] IGetPooCountInteractor interactor)
     {
-        var activeCats = _dbContext.Cats
-            .Where(c => c.Type == CatType.Active)
-            .Select(c => c.Id)
+        var response = await interactor.GetPooCount(new IGetPooCountInteractor.Request());
+
+        var pooCounts = response.Counts
+            .Select(c => new PooCount(c.ToiletId, c.PooCount))
             .ToArray();
 
-        var result = new List<PooCount>();
-
-        var toilets = _dbContext.Toilets
-            .OrderBy(t => t.Id)
-            .Include(t => t.ScaleEvents)
-            .ThenInclude(e => e.Cleaning)
-            .Include(t => t.ScaleEvents)
-            .ThenInclude(e => e.Measurement);
-
-        foreach (var toilet in toilets)
-        {
-            var lastCleaningTime = toilet
-                                       .ScaleEvents
-                                       .Where(e => e.Cleaning != null)
-                                       .MaxBy(e => e.StartTime)
-                                       ?.StartTime
-                                   ?? DateTimeOffset.MinValue;
-
-            var numMeasurementsSinceLastCleaning = toilet.ScaleEvents
-                .Count(e =>
-                    e.StartTime > lastCleaningTime &&
-                    e.Measurement != null &&
-                    activeCats.Contains(e.Measurement.CatId // TODO check how this translates to sql
-                    ));
-
-            result.Add(new PooCount(toilet.Id, numMeasurementsSinceLastCleaning));
-        }
-
-        return Ok(result.ToArray());
+        return Ok(pooCounts);
     }
 
     [HttpGet]

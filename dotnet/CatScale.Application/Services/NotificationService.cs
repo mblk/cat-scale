@@ -1,4 +1,4 @@
-namespace CatScale.Service.Services;
+namespace CatScale.Application.Services;
 
 public interface INotificationService
 {

@@ -1,9 +1,9 @@
+using CatScale.Application.Services;
 using CatScale.Application.UseCases.ScaleEvents;
 using CatScale.Domain.Model;
 using CatScale.Service.DbModel;
 using CatScale.Service.Mapper;
 using CatScale.Service.Model.ScaleEvent;
-using CatScale.Service.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,15 +16,13 @@ public class ScaleEventController : ControllerBase
 {
     private readonly ILogger<ScaleEventController> _logger;
     private readonly CatScaleDbContext _dbContext;
-    private readonly IClassificationService _classificationService;
     private readonly INotificationService _notificationService;
 
     public ScaleEventController(ILogger<ScaleEventController> logger, CatScaleDbContext dbContext,
-        IClassificationService classificationService, INotificationService notificationService)
+        INotificationService notificationService)
     {
         _logger = logger;
         _dbContext = dbContext;
-        _classificationService = classificationService;
         _notificationService = notificationService;
     }
 
@@ -64,8 +62,12 @@ public class ScaleEventController : ControllerBase
     //[Authorize(AuthenticationSchemes = "ApiKey, Identity.Application", Roles = ApplicationRoles.Admin)]
     [Authorize(AuthenticationSchemes = "ApiKey, Identity.Application")]
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] NewScaleEvent newScaleEvent)
+    public async Task<IActionResult> Create(
+        [FromServices] ICreateScaleEventInteractor interactor,
+        [FromBody] NewScaleEvent newScaleEvent)
     {
+        _logger.LogInformation("Creating scale event: {NewScaleEvent}", newScaleEvent);
+
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
@@ -76,82 +78,23 @@ public class ScaleEventController : ControllerBase
         double humidity = newScaleEvent.Humidity!.Value;
         double pressure = newScaleEvent.Pressure!.Value;
 
-        _logger.LogInformation("New cat scale event: {NewScaleEvent}", newScaleEvent);
+        (DateTimeOffset, double, double)[] stablePhases = newScaleEvent.StablePhases!
+            .Select(sp => (sp.Timestamp!.Value, sp.Length!.Value, sp.Value!.Value))
+            .ToArray();
 
-        // Check if dates are plausible.
-        if (endTime < startTime.AddSeconds(5))
-            return BadRequest("Event too short");
+        var response = await interactor.CreateScaleEvent(
+            new ICreateScaleEventInteractor.Request(toiletId, startTime, endTime,
+                stablePhases, temperature, humidity, pressure));
 
-        if (endTime > startTime.AddMinutes(15))
-            return BadRequest("Event too long");
-
-        if (startTime > DateTimeOffset.Now)
-            return BadRequest("Start time is in future");
-
-        if (startTime < DateTimeOffset.Now.AddDays(-7))
-            return BadRequest("Start time is too far in the past");
-
-        // Check if the event already exists.
-        var justBeforeStart = startTime.ToUniversalTime().AddSeconds(-1);
-        var justAfterStart = startTime.ToUniversalTime().AddSeconds(1);
-        if (await _dbContext.ScaleEvents.AnyAsync(e =>
-                justBeforeStart < e.StartTime && e.StartTime < justAfterStart &&
-                e.ToiletId == toiletId))
-        {
-            _logger.LogError("Can't create scale event because it already exists: {newScaleEvent}", newScaleEvent);
-            return Conflict("Scale event already exists");
-        }
-
-        //
-        if (newScaleEvent.StablePhases!.Any(e =>
-                e.Timestamp!.Value.AddSeconds(-e.Length!.Value) < startTime || e.Timestamp > endTime))
-            return BadRequest("Stable phase outside of event bounds");
-
-        // Lookup required data.
-        var toilet = await _dbContext.Toilets
-            .SingleOrDefaultAsync(t => t.Id == toiletId);
-
-        if (toilet is null)
-            return NotFound($"Toilet does not exist");
-
-        var cats = await _dbContext.Cats
-            .AsNoTracking()
-            .Include(c => c.Weights)
-            .ToArrayAsync();
-
-        // Create new scale event.
-        var scaleEvent = new ScaleEvent()
-        {
-            ToiletId = toilet.Id,
-            StartTime = startTime.ToUniversalTime(),
-            EndTime = endTime.ToUniversalTime(),
-            StablePhases = newScaleEvent.StablePhases!.Select(x => new StablePhase()
-            {
-                Timestamp = x.Timestamp!.Value.ToUniversalTime(),
-                Length = x.Length!.Value,
-                Value = x.Value!.Value
-            }).ToList(),
-            Temperature = temperature,
-            Humidity = humidity,
-            Pressure = pressure,
-        };
-
-        _classificationService.ClassifyScaleEvent(cats, scaleEvent);
-
-        await _dbContext.ScaleEvents.AddAsync(scaleEvent);
-        await _dbContext.SaveChangesAsync();
-
-        _notificationService.NotifyScaleEventsChanged();
-
-        // Done.
         return CreatedAtAction(nameof(GetOne),
-            new { Id = scaleEvent.Id },
-            DataMapper.MapScaleEvent(scaleEvent));
+            new { id = response.ScaleEvent.Id },
+            DataMapper.MapScaleEvent(response.ScaleEvent));
     }
 
     [Authorize(Roles = ApplicationRoles.Admin)]
     [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(
+        [FromRoute] int id)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -195,7 +138,7 @@ public class ScaleEventController : ControllerBase
         if (scaleEvent is null)
             return NotFound();
 
-        _classificationService.ClassifyScaleEvent(cats, scaleEvent);
+        //_classificationService.ClassifyScaleEvent(cats, scaleEvent);
         await _dbContext.SaveChangesAsync();
 
         _notificationService.NotifyScaleEventsChanged();
@@ -221,7 +164,7 @@ public class ScaleEventController : ControllerBase
 
         foreach (var scaleEvent in scaleEvents)
         {
-            _classificationService.ClassifyScaleEvent(cats, scaleEvent);
+            //_classificationService.ClassifyScaleEvent(cats, scaleEvent);
         }
 
         await _dbContext.SaveChangesAsync();

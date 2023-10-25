@@ -154,7 +154,7 @@ public class UserController : ControllerBase
         var apiKey = await _apiKeyService.CreateApiKey(user, request.ExpirationDate);
         var apiKeyDto = DataMapper.MapUserApiKey(apiKey);
 
-        return CreatedAtAction(nameof(CreateApiKey), new { Id = apiKeyDto.Id }, apiKeyDto);
+        return CreatedAtAction(nameof(CreateApiKey), new { id = apiKeyDto.Id }, apiKeyDto);
     }
 
     [Authorize(Roles = ApplicationRoles.Admin)]

@@ -1,25 +1,20 @@
 using System.Diagnostics.CodeAnalysis;
 using CatScale.Domain.Model;
 
-namespace CatScale.Service.Services;
+namespace CatScale.Application.Services;
 
-public interface IClassificationService
+public interface IClassificationService // TODO should this be an Interactor instead?
 {
-    bool TryClassifyCatByWeight(IEnumerable<Cat> cats, DateTimeOffset timestamp, double weight, double tolerance, [NotNullWhen(true)] out Cat? cat);
-    
+    bool TryClassifyCatByWeight(IEnumerable<Cat> cats, DateTimeOffset timestamp, double weight, double tolerance,
+        [NotNullWhen(true)] out Cat? cat);
+
     void ClassifyScaleEvent(IEnumerable<Cat> cats, ScaleEvent scaleEvent);
 }
 
 public class ClassificationService : IClassificationService
 {
-    private readonly ILogger<ClassificationService> _logger;
-
-    public ClassificationService(ILogger<ClassificationService> logger)
-    {
-        _logger = logger;
-    }
-
-    public bool TryClassifyCatByWeight(IEnumerable<Cat> cats, DateTimeOffset timestamp, double weight, double tolerance, [NotNullWhen(true)] out Cat? cat)
+    public bool TryClassifyCatByWeight(IEnumerable<Cat> cats, DateTimeOffset timestamp, double weight, double tolerance,
+        [NotNullWhen(true)] out Cat? cat)
     {
         // TODO check args
 
@@ -43,16 +38,16 @@ public class ClassificationService : IClassificationService
             cat = catsAndDiffs.First().Cat;
             return true;
         }
-        
+
         cat = null;
         return false;
     }
-    
+
     public void ClassifyScaleEvent(IEnumerable<Cat> cats, ScaleEvent scaleEvent)
     {
         // TODO StablePhases / Cleaning / Measurement might be null if not included in ef-query.
         // TODO check args
-        
+
         var allNegativeWeightPhases = scaleEvent.StablePhases
             .Where(sp => sp is { Length: > 1.0, Value: < -10.0 })
             .OrderBy(sp => sp.Timestamp)
@@ -74,11 +69,11 @@ public class ClassificationService : IClassificationService
         // Clear old classification.
         scaleEvent.Cleaning = null;
         scaleEvent.Measurement = null;
-        
+
         // Cleaning?
         if (significantNegativeWeightPhases.Any())
         {
-            _logger.LogInformation($"Looks like cleaning ...");
+            //_logger.LogInformation($"Looks like cleaning ...");
 
             // Try to determine removed weight.
             double maxValue = significantNegativeWeightPhases.First().Value;
@@ -86,30 +81,31 @@ public class ClassificationService : IClassificationService
                 ? significantNegativeWeightPhases.Skip(1).Min(sp => sp.Value)
                 : maxValue;
             double cleaningWeight = maxValue - minValue;
-            _logger.LogInformation($"cleaningWeight 1: {cleaningWeight}");
-            
+            //_logger.LogInformation($"cleaningWeight 1: {cleaningWeight}");
+
             // Optionally use last phase instead?
             double lastNegativePhaseValue = allNegativeWeightPhases.Last().Value;
             if (lastNegativePhaseValue > -500.0)
                 cleaningWeight = lastNegativePhaseValue;
-            _logger.LogInformation($"cleaningWeight 2: {cleaningWeight}");
+            //_logger.LogInformation($"cleaningWeight 2: {cleaningWeight}");
 
             scaleEvent.Cleaning = new Cleaning()
             {
                 Timestamp = scaleEvent.StartTime,
                 Time = (scaleEvent.EndTime - scaleEvent.StartTime).TotalSeconds,
-                ScaleEventId = scaleEvent.Id, // Note: If a cleaning already exists for the scale-event, it is somehow automatically deleted by entity-framework.
+                ScaleEventId =
+                    scaleEvent.Id, // Note: If a cleaning already exists for the scale-event, it is somehow automatically deleted by entity-framework.
                 Weight = cleaningWeight,
             };
-            
-            _logger.LogInformation($"Classified scale event as cleaning");
+
+            //_logger.LogInformation($"Classified scale event as cleaning");
             return;
         }
-        
+
         // Measurement?
-        if(significantPositiveWeightPhases.Any())
+        if (significantPositiveWeightPhases.Any())
         {
-            _logger.LogInformation($"Looks like measurement ...");
+            //_logger.LogInformation($"Looks like measurement ...");
 
             var longestStablePhase = significantPositiveWeightPhases
                 .OrderByDescending(x => x.Length)
@@ -118,10 +114,10 @@ public class ClassificationService : IClassificationService
 
             if (!TryClassifyCatByWeight(cats, scaleEvent.StartTime, catWeight, 500d, out var cat))
             {
-                _logger.LogError($"Can't classify cat by weight {catWeight}");
+                //_logger.LogError($"Can't classify cat by weight {catWeight}");
                 return;
             }
-            
+
             var pooStartTime = longestStablePhase.Timestamp.AddSeconds(-longestStablePhase.Length);
             var pooEndTime = longestStablePhase.Timestamp;
             var setupDuration = (pooStartTime - scaleEvent.StartTime).TotalSeconds;
@@ -130,7 +126,7 @@ public class ClassificationService : IClassificationService
 
             var pooWeight = allPositiveWeightPhases.Last().Value;
             if (pooWeight is < 0 or > 500.0) pooWeight = 0.0;
-            
+
             scaleEvent.Measurement = new Measurement()
             {
                 Timestamp = scaleEvent.StartTime,
@@ -142,11 +138,11 @@ public class ClassificationService : IClassificationService
                 PooWeight = pooWeight,
                 CatId = cat.Id,
             };
-            
-            _logger.LogInformation($"Classified scale event as measurement");
+
+            //_logger.LogInformation($"Classified scale event as measurement");
             return;
         }
 
-        _logger.LogInformation($"Unable to classify scale event");
+        //_logger.LogInformation($"Unable to classify scale event");
     }
 }

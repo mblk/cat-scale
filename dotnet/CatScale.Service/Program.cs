@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using CatScale.Application.Repository;
+using CatScale.Application.Services;
 using CatScale.Application.UseCases.ScaleEvents;
 using CatScale.Application.UseCases.Toilets;
 using CatScale.Service.Authentication;
@@ -83,19 +84,24 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
-builder.Services.AddScoped<IClassificationService, ClassificationService>();
 builder.Services.AddScoped<IInfluxService, InfluxService>();
 builder.Services.AddScoped<IGraphService, GraphService>();
 
-builder.Services.AddSingleton<INotificationService, NotificationService>();
-
+// ---------------
+// infrastructure
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>(); // One Instance per Http-Request
 
 // ---------------
+// application
+builder.Services.AddTransient<IClassificationService, ClassificationService>();
+builder.Services.AddSingleton<INotificationService, NotificationService>();
+
 // TODO auto-register?
 builder.Services
     .AddTransient<IGetAllScaleEventsInteractor, GetAllScaleEventsInteractor>()
     .AddTransient<IGetOneScaleEventInteractor, GetOneScaleEventInteractor>()
+    .AddTransient<ICreateScaleEventInteractor, CreateScaleEventInteractor>()
+    .AddTransient<IClassifyScaleEventInteractor, ClassifyScaleEventInteractor>()
     
     .AddTransient<IGetAllToiletsInteractor, GetAllToiletsInteractor>()
     .AddTransient<IGetOneToiletInteractor, GetOneToiletInteractor>()

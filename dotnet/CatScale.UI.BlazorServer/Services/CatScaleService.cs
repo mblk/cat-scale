@@ -38,11 +38,9 @@ public interface ICatScaleService // TODO split up?
     // ScaleEvents
     //
 
-    Task<ScaleEventDto[]> GetScaleEvents();
+    Task<(ScaleEventDto[], int)> GetScaleEvents(int? toiletId = null, int? skip = null, int? take = null);
     Task DeleteScaleEvent(int id);
     Task ClassifyScaleEvent(int id);
-    Task ClassifyAllScaleEvents();
-    Task DeleteAllScaleEventClassifications();
 
     Task<ScaleEventStats> GetScaleEventStats();
     Task<PooCount[]> GetPooCounts();
@@ -56,7 +54,7 @@ public interface ICatScaleService // TODO split up?
     Task<FoodDto> CreateFood(string brand, string name, double caloriesPerGram);
     Task<FoodDto> UpdateFood(int id, string brand, string name, double caloriesPerGram);
     Task DeleteFood(int id);
-    
+
     //
     // Feeding
     //
@@ -65,17 +63,17 @@ public interface ICatScaleService // TODO split up?
     Task<FeedingDto> GetOneFeeding(int id);
     Task<FeedingDto> CreateFeeding(int catId, int foodId, DateTimeOffset timestamp, double offered, double eaten);
     Task DeleteFeeding(int id);
-    
+
     //
     // Graphs
     //
-    
+
     string GetScaleEventGraphUri(int id);
     string GetCatGraphUri(int id, DateTimeOffset? minTime, DateTimeOffset? maxTime, bool includeTemperature);
     string GetCombinedCatGraphUri(int id1, int id2, bool sameAxis, DateTimeOffset? minTime, DateTimeOffset? maxTime);
     string GetToiletGraphUri(int id, ToiletSensorValue sensorValue);
     string GetCombinedToiletGraphUri(int id, ToiletSensorValue sensorValue1, ToiletSensorValue sensorValue2);
-    
+
     //
     // ApiKeys
     //
@@ -178,9 +176,40 @@ public class CatScaleService : ICatScaleService
     // ScaleEvents
     //
 
-    public async Task<ScaleEventDto[]> GetScaleEvents()
-        => await _httpClient.GetFromJsonAsync<ScaleEventDto[]>($"api/ScaleEvent/GetAll") ??
-           throw new JsonException("Failed to deserialize response");
+    public async Task<(ScaleEventDto[], int)> GetScaleEvents(int? toiletId = null, int? skip = null, int? take = null)
+    {
+        var parameters = new List<string>();
+
+        if (toiletId != null)
+            parameters.Add($"toiletId={toiletId}");
+        if (skip != null)
+            parameters.Add($"skip={skip}");
+        if (take != null)
+            parameters.Add($"take={take}");
+
+        var uri = "api/ScaleEvent/GetAll";
+
+        if (parameters.Any())
+        {
+            uri += "?";
+            uri += String.Join("&", parameters);
+        }
+
+        var response = (await _httpClient.GetAsync(uri))
+            .EnsureSuccessStatusCode();
+        
+        int totalCount = 0;
+        if (response.Headers.TryGetValues("X-Total-Count", out var totalCountValues))
+        {
+            var s = totalCountValues.FirstOrDefault() ?? String.Empty;
+            _ = Int32.TryParse(s, out totalCount);
+        }
+
+        var scaleEvents = await response.Content.ReadFromJsonAsync<ScaleEventDto[]>()
+               ?? throw new JsonException("Failed to deserialize response");
+
+        return (scaleEvents, totalCount);
+    }
 
     public async Task DeleteScaleEvent(int id)
         => (await _httpClient.DeleteAsync($"api/ScaleEvent/Delete/{id}"))
@@ -188,14 +217,6 @@ public class CatScaleService : ICatScaleService
 
     public async Task ClassifyScaleEvent(int id)
         => (await _httpClient.PostAsync($"api/ScaleEvent/Classify/{id}", null))
-            .EnsureSuccessStatusCode();
-
-    public async Task ClassifyAllScaleEvents()
-        => (await _httpClient.PostAsync($"api/ScaleEvent/ClassifyAllEvents", null))
-            .EnsureSuccessStatusCode();
-
-    public async Task DeleteAllScaleEventClassifications()
-        => (await _httpClient.PostAsync($"api/ScaleEvent/DeleteAllClassifications", null))
             .EnsureSuccessStatusCode();
 
     public async Task<ScaleEventStats> GetScaleEventStats()
@@ -209,15 +230,15 @@ public class CatScaleService : ICatScaleService
     //
     // Food
     //
-    
+
     public async Task<FoodDto[]> GetAllFoods()
         => await _httpClient.GetFromJsonAsync<FoodDto[]>($"api/Food/GetAll") ??
            throw new JsonException("Failed to deserialize response");
-    
+
     public async Task<FoodDto> GetOneFood(int id)
         => await _httpClient.GetFromJsonAsync<FoodDto>($"api/Food/GetOne/{id}") ??
            throw new JsonException("Failed to deserialize response");
-    
+
     public async Task<FoodDto> CreateFood(string brand, string name, double caloriesPerGram)
     {
         var response = (await _httpClient.PutAsJsonAsync("api/Food/Create",
@@ -227,7 +248,7 @@ public class CatScaleService : ICatScaleService
         return await response.Content.ReadFromJsonAsync<FoodDto>() ??
                throw new JsonException("Failed to deserialize response");
     }
-    
+
     public async Task<FoodDto> UpdateFood(int id, string brand, string name, double caloriesPerGram)
     {
         var response = (await _httpClient.PostAsJsonAsync($"api/Food/Update/{id}",
@@ -237,11 +258,11 @@ public class CatScaleService : ICatScaleService
         return await response.Content.ReadFromJsonAsync<FoodDto>() ??
                throw new JsonException("Failed to deserialize response");
     }
-    
+
     public async Task DeleteFood(int id)
         => (await _httpClient.DeleteAsync($"api/Food/Delete/{id}"))
             .EnsureSuccessStatusCode();
-    
+
     //
     // Feeding
     //
@@ -249,12 +270,13 @@ public class CatScaleService : ICatScaleService
     public async Task<FeedingDto[]> GetAllFeedings()
         => await _httpClient.GetFromJsonAsync<FeedingDto[]>($"api/Feeding/GetAll") ??
            throw new JsonException("Failed to deserialize response");
-    
+
     public async Task<FeedingDto> GetOneFeeding(int id)
         => await _httpClient.GetFromJsonAsync<FeedingDto>($"api/Feeding/GetOne/{id}") ??
            throw new JsonException("Failed to deserialize response");
 
-    public async Task<FeedingDto> CreateFeeding(int catId, int foodId, DateTimeOffset timestamp, double offered, double eaten)
+    public async Task<FeedingDto> CreateFeeding(int catId, int foodId, DateTimeOffset timestamp, double offered,
+        double eaten)
     {
         var response = (await _httpClient.PutAsJsonAsync("api/Cat/Create",
                 new CreateFeedingRequest(catId, foodId, timestamp, offered, eaten)))
@@ -263,11 +285,11 @@ public class CatScaleService : ICatScaleService
         return await response.Content.ReadFromJsonAsync<FeedingDto>() ??
                throw new JsonException("Failed to deserialize response");
     }
-    
+
     public async Task DeleteFeeding(int id)
         => (await _httpClient.DeleteAsync($"api/Feeding/Delete/{id}"))
             .EnsureSuccessStatusCode();
-    
+
     //
     // Graphs
     //
@@ -278,7 +300,7 @@ public class CatScaleService : ICatScaleService
         {
             var baseAddress = _httpClient.BaseAddress;
             if (baseAddress is null) throw new InvalidOperationException("API BaseAddress not set");
-            
+
             var host = baseAddress.Host;
             var port = baseAddress.Port;
             var scheme = baseAddress.Scheme;
@@ -296,12 +318,12 @@ public class CatScaleService : ICatScaleService
     private static string AddTimeFilterToPath(string path, DateTimeOffset? minTime, DateTimeOffset? maxTime)
     {
         const string format = "yyyy-MM-ddTHH:mm:ssZ";
-        
+
         var pathBuilder = new StringBuilder(path);
 
         if (minTime != null)
             pathBuilder.Append($"&minTime={minTime.Value.ToString(format)}");
-        
+
         if (maxTime != null)
             pathBuilder.Append($"&maxTime={maxTime.Value.ToString(format)}");
 
@@ -320,19 +342,22 @@ public class CatScaleService : ICatScaleService
         return GetGraphUri(path);
     }
 
-    public string GetCombinedCatGraphUri(int id1, int id2, bool sameAxis, DateTimeOffset? minTime, DateTimeOffset? maxTime)
+    public string GetCombinedCatGraphUri(int id1, int id2, bool sameAxis, DateTimeOffset? minTime,
+        DateTimeOffset? maxTime)
     {
-        return GetGraphUri(AddTimeFilterToPath($"api/Graph/GetCombinedCatMeasurements?catId1={id1}&catId2={id2}&sameAxis={sameAxis}", minTime, maxTime));
+        return GetGraphUri(AddTimeFilterToPath(
+            $"api/Graph/GetCombinedCatMeasurements?catId1={id1}&catId2={id2}&sameAxis={sameAxis}", minTime, maxTime));
     }
-    
+
     public string GetToiletGraphUri(int id, ToiletSensorValue sensorValue)
     {
         return GetGraphUri($"api/Graph/GetToiletData?toiletId={id}&sensorValue={sensorValue}");
     }
-    
+
     public string GetCombinedToiletGraphUri(int id, ToiletSensorValue sensorValue1, ToiletSensorValue sensorValue2)
     {
-        return GetGraphUri($"api/Graph/GetCombinedToiletData?toiletId={id}&sensorValue1={sensorValue1}&sensorValue2={sensorValue2}");
+        return GetGraphUri(
+            $"api/Graph/GetCombinedToiletData?toiletId={id}&sensorValue1={sensorValue1}&sensorValue2={sensorValue2}");
     }
 
     //

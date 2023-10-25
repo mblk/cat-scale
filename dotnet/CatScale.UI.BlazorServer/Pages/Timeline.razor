@@ -10,15 +10,16 @@
 }
 else
 {
-    <AuthorizeView>
-        <Authorized>
-            <button class="btn btn-sm btn-danger" @onclick="@DeleteAllClassifications">Alle Klassifikationen löschen</button>
-            <button class="btn btn-sm btn-danger" @onclick="@ClassifyAllScaleEvents">Alle Ereignisse neu klassifizieren</button>
-            <br />
-            <br />
-        </Authorized>
-    </AuthorizeView>
-    
+    <div class="btn-group btn-group-sm mb-2">
+        <button class="btn btn-sm btn-primary" @onclick="@GoToFirstPage">First</button>
+        <button class="btn btn-sm btn-primary" @onclick="@GoToPrevPage">Prev</button>
+        <div class="d-flex bg-secondary text-white ps-2 pe-2 align-items-center">
+            @GetPagingDescription()
+        </div>
+        <button class="btn btn-sm btn-primary" @onclick="@GoToNextPage">Next</button>
+        <button class="btn btn-sm btn-primary" @onclick="@GoToLastPage">Last</button>
+    </div>
+
     <div class="accordion">
         @foreach (var vm in _scaleEventViewModels)
         {
@@ -26,7 +27,7 @@ else
                 <h2 class="accordion-header">
                     <button class="accordion-button ps-1 pt-1 pb-1 @(vm.Expanded ? "show" : "collapsed")" type="button"
                             @onclick="@(() => { vm.Expanded = !vm.Expanded; })">
-                        
+
                         <div class="alert alert-primary m-0 p-2" role="alert">
                             @TimestampFormatter.Format(vm.ScaleEvent.Start)
                         </div>
@@ -71,12 +72,12 @@ else
                             Start: @TimestampFormatter.Format(vm.ScaleEvent.Start)<br/>
                             Ende: @TimestampFormatter.Format(vm.ScaleEvent.End)<br/>
                             Dauer: @((vm.ScaleEvent.End - vm.ScaleEvent.Start).TotalSeconds.ToString("F0"))s<br/>
-                            Katzenklo: @vm.ScaleEvent.ToiletId<br />
-                            
-                            Temperature: @vm.ScaleEvent.Temperature °C<br />
-                            Luftfeuchte: @vm.ScaleEvent.Humidity %<br />
-                            Luftdruck: @vm.ScaleEvent.Pressure Pa<br />
-                            
+                            Katzenklo: @vm.ScaleEvent.ToiletId<br/>
+
+                            Temperature: @vm.ScaleEvent.Temperature °C<br/>
+                            Luftfeuchte: @vm.ScaleEvent.Humidity %<br/>
+                            Luftdruck: @vm.ScaleEvent.Pressure Pa<br/>
+
                             @if (vm.ScaleEvent.Cleaning is null)
                             {
                                 <div>Keine Reinigung</div>
@@ -91,7 +92,7 @@ else
                                     Gewicht: @vm.ScaleEvent.Cleaning.Weight.ToString("F0")g<br/>
                                 </div>
                             }
-                            
+
                             @if (vm.ScaleEvent.Measurement is null)
                             {
                                 <div>Keine Messung</div>
@@ -101,7 +102,7 @@ else
                                 <div class="ms-4">
                                     <strong>Messung</strong>
                                     (Id: @vm.ScaleEvent.Measurement.Id)<br/>
-                                    Katze: @vm.ScaleEvent.Measurement.CatId<br />
+                                    Katze: @vm.ScaleEvent.Measurement.CatId<br/>
                                     Zeitpunkt: @TimestampFormatter.Format(vm.ScaleEvent.Measurement.Timestamp)<br/>
                                     Setup: @vm.ScaleEvent.Measurement.SetupTime.ToString("F0")s<br/>
                                     Poo: @vm.ScaleEvent.Measurement.PooTime.ToString("F0")s<br/>
@@ -110,7 +111,7 @@ else
                                     Poo: @vm.ScaleEvent.Measurement.PooWeight.ToString("F0")g<br/>
                                 </div>
                             }
-                            
+
                             <br/>
                             <strong>Stabile Phasen: @vm.ScaleEvent.StablePhases.Length</strong><br/>
                             <table class="table table-bordered">
@@ -135,10 +136,10 @@ else
 
                             <img src="@CatScaleService.GetScaleEventGraphUri(vm.ScaleEvent.Id)" style="max-width: 100%" alt="Grafik kann nicht geladen werden"/>
                             <br/>
-                            
+
                             <AuthorizeView>
                                 <Authorized>
-                                    <br />
+                                    <br/>
                                     <div class="btn-group">
                                         <button class="btn btn-primary" @onclick="@(() => Classify(vm))">Klassifizieren</button>
                                         <button class="btn btn-danger" @onclick="@(() => Delete(vm))">Löschen</button>
@@ -155,9 +156,11 @@ else
 
 @code {
     private CatDto[]? _cats;
-    
-    private ScaleEventDto[]? _scaleEvents;
 
+    private int _pageStart = 0;
+    private readonly int _pageSize = 100;
+    private int _totalCount;
+    private ScaleEventDto[]? _scaleEvents;
     private ScaleEventViewModel[]? _scaleEventViewModels;
 
     internal class ScaleEventViewModel
@@ -171,24 +174,12 @@ else
         }
     }
 
-    private async Task DeleteAllClassifications()
-    {
-        await CatScaleService.DeleteAllScaleEventClassifications();
-        await LoadData();
-    }
-
-    private async Task ClassifyAllScaleEvents()
-    {
-        await CatScaleService.ClassifyAllScaleEvents();
-        await LoadData();
-    }
-
     private async Task Delete(ScaleEventViewModel vm)
     {
         await CatScaleService.DeleteScaleEvent(vm.ScaleEvent.Id);
         await LoadData();
     }
-    
+
     private async Task Classify(ScaleEventViewModel vm)
     {
         await CatScaleService.ClassifyScaleEvent(vm.ScaleEvent.Id);
@@ -209,21 +200,61 @@ else
             _scaleEventViewModels = null;
 
             await InvokeAsync(StateHasChanged);
-            
+
             _cats = await CatScaleService.GetAllCats();
-            
-            _scaleEvents = await CatScaleService.GetScaleEvents();
+
+            (_scaleEvents, _totalCount) = await CatScaleService.GetScaleEvents(skip: _pageStart, take: _pageSize);
 
             _scaleEventViewModels = _scaleEvents
-                .OrderByDescending(x => x.Start)
                 .Select(x => new ScaleEventViewModel(x))
                 .ToArray();
-            
+
             await InvokeAsync(StateHasChanged);
         }
         catch (Exception e)
         {
             Console.WriteLine(e.ToString());
         }
+    }
+
+    private async Task GoToFirstPage()
+    {
+        _pageStart = 0;
+        await LoadData();
+    }
+
+    private async Task GoToLastPage()
+    {
+        _pageStart = _totalCount - _pageSize;
+        await LoadData();
+    }
+
+    private async Task GoToPrevPage()
+    {
+        _pageStart -= _pageSize;
+        
+        if (_pageStart < 0)
+            _pageStart = 0;
+        
+        await LoadData();
+    }
+
+    private async Task GoToNextPage()
+    {
+        _pageStart += _pageSize;
+
+        if (_pageStart > _totalCount - _pageSize)
+            _pageStart = _totalCount - _pageSize;
+        
+        await LoadData();
+    }
+
+    private string GetPagingDescription()
+    {
+        var first = _pageStart + 1;
+        var last = _pageStart + _pageSize;
+        var total = _totalCount;
+
+        return $"{first}-{last}/{total}";
     }
 }

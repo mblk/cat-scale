@@ -23,10 +23,9 @@ public class ScaleEventController : ControllerBase
     }
 
     [HttpGet]
-    [HttpGet("{toiletId:int?}")]
     public async Task<ActionResult<IAsyncEnumerable<ScaleEventDto>>> GetAll(
         [FromServices] IGetAllScaleEventsInteractor interactor,
-        [FromRoute] int? toiletId,
+        [FromQuery] int? toiletId,
         [FromQuery] int? skip,
         [FromQuery] int? take)
     {

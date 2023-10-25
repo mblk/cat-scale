@@ -16,9 +16,28 @@ public class ScaleEventHttpClient
         _output = output;
     }
 
-    public async Task<ScaleEventDto[]> GetAll()
-        => await _client.GetFromJsonAsync<ScaleEventDto[]>($"api/ScaleEvent/GetAll") ??
-           throw new Exception("Failed to deserialize response");
+    public async Task<ScaleEventDto[]> GetAll(int? toiletId = null, int? skip = null, int? take = null)
+    {
+        var parameters = new List<string>();
+
+        if (toiletId != null)
+            parameters.Add($"toiletId={toiletId}");
+        if (skip != null)
+            parameters.Add($"skip={skip}");
+        if (take != null)
+            parameters.Add($"take={take}");
+
+        var uri = "api/ScaleEvent/GetAll";
+
+        if (parameters.Any())
+        {
+            uri += "?";
+            uri += String.Join("&", parameters);
+        }
+
+        return await _client.GetFromJsonAsync<ScaleEventDto[]>(uri) ??
+               throw new Exception("Failed to deserialize response");
+    }
 
     public async Task<ScaleEventDto> Get(int id)
         => await _client.GetFromJsonAsync<ScaleEventDto>($"api/ScaleEvent/GetOne/{id}")
@@ -36,6 +55,36 @@ public class ScaleEventHttpClient
 
         return await response.Content.ReadFromJsonAsync<ScaleEventDto>() ??
                throw new Exception("Failed to deserialize response");
+    }
+
+    public async Task<ScaleEventDto> CreateSimpleMeasurement(int toiletId, DateTimeOffset startTime)
+    {
+        var tStart = startTime;
+        var tStable = startTime.AddSeconds(30); // 20-30
+        var tEnd = startTime.AddSeconds(60);
+
+        return await Create(new NewScaleEvent(toiletId, tStart, tEnd,
+            new NewStablePhase[]
+            {
+                new(tStable, 10.0d, 5000.0d)
+            },
+            22.0d, 50.0d, 100000.0d));
+    }
+
+    public async Task<ScaleEventDto> CreateSimpleCleaning(int toiletId, DateTimeOffset startTime)
+    {
+        var tStart = startTime;
+        var tStable1 = startTime.AddSeconds(30); // 20-30
+        var tStable2 = startTime.AddSeconds(50); // 40-50
+        var tEnd = startTime.AddSeconds(60);
+
+        return await Create(new NewScaleEvent(toiletId, tStart, tEnd,
+            new NewStablePhase[]
+            {
+                new(tStable1, 10.0d, -1000.0d),
+                new(tStable2, 10.0d, -100.0d)
+            },
+            22.0d, 50.0d, 100000.0d));
     }
 
     public async Task<ScaleEventDto> CreateWithApiKey(NewScaleEvent scaleEvent, string apiKey)

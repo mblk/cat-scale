@@ -34,6 +34,66 @@ public class ScaleEventIntegrationTests : IntegrationTest
     }
 
     [Fact]
+    public async Task GetAll_Should_AllReturnEvents_When_NoFilterUsed()
+    {
+        var t0 = DateTimeOffset.Now; // TODO don't use Now
+
+        await Login();
+        var createdToilet = await Toilet.Create("toilet", "desc");
+        await ScaleEvent.CreateSimpleMeasurement(createdToilet.Id, t0.AddMinutes(-10));
+        await ScaleEvent.CreateSimpleMeasurement(createdToilet.Id, t0.AddMinutes(-8));
+        await ScaleEvent.CreateSimpleMeasurement(createdToilet.Id, t0.AddMinutes(-6));
+        await ScaleEvent.CreateSimpleCleaning(createdToilet.Id, t0.AddMinutes(-4));
+        await ScaleEvent.CreateSimpleMeasurement(createdToilet.Id, t0.AddMinutes(-2));
+        await Logout();
+
+        var scaleEvents = await ScaleEvent.GetAll();
+
+        Assert.Equal(5, scaleEvents.Length);
+    }
+
+    [Fact]
+    public async Task GetAll_Should_ReturnFilteredEvents_When_FilteredByToiletId()
+    {
+        var t0 = DateTimeOffset.Now; // TODO don't use Now
+
+        await Login();
+        var toilet1 = await Toilet.Create("toilet1", "desc1");
+        var toilet2 = await Toilet.Create("toilet2", "desc2");
+        await ScaleEvent.CreateSimpleMeasurement(toilet1.Id, t0.AddMinutes(-10));
+        await ScaleEvent.CreateSimpleMeasurement(toilet1.Id, t0.AddMinutes(-8));
+        await ScaleEvent.CreateSimpleMeasurement(toilet2.Id, t0.AddMinutes(-6));
+        await ScaleEvent.CreateSimpleCleaning(toilet2.Id, t0.AddMinutes(-4));
+        await ScaleEvent.CreateSimpleMeasurement(toilet1.Id, t0.AddMinutes(-2));
+        await Logout();
+
+        var scaleEvents1 = await ScaleEvent.GetAll(toiletId: toilet1.Id);
+        var scaleEvents2 = await ScaleEvent.GetAll(toiletId: toilet2.Id);
+
+        Assert.Equal(3, scaleEvents1.Length);
+        Assert.Equal(2, scaleEvents2.Length);
+    }
+
+    [Fact]
+    public async Task GetAll_Should_ReturnPagedEvents_When_SkipAndTakeSpecified()
+    {
+        var t0 = DateTimeOffset.Now; // TODO don't use Now
+
+        await Login();
+        var createdToilet = await Toilet.Create("toilet", "desc");
+        await ScaleEvent.CreateSimpleMeasurement(createdToilet.Id, t0.AddMinutes(-10));
+        await ScaleEvent.CreateSimpleMeasurement(createdToilet.Id, t0.AddMinutes(-8));
+        await ScaleEvent.CreateSimpleMeasurement(createdToilet.Id, t0.AddMinutes(-6));
+        await ScaleEvent.CreateSimpleCleaning(createdToilet.Id, t0.AddMinutes(-4));
+        await ScaleEvent.CreateSimpleMeasurement(createdToilet.Id, t0.AddMinutes(-2));
+        await Logout();
+
+        var scaleEvents = await ScaleEvent.GetAll(skip: 1, take: 2);
+
+        Assert.Equal(2, scaleEvents.Length);
+    }
+
+    [Fact]
     public async Task GetAll_Should_ReturnEvents_When_EventsExist()
     {
         await Login();
@@ -527,9 +587,11 @@ public class ScaleEventIntegrationTests : IntegrationTest
     }
 
     // TODO:
-    // GetAll + Paging
+    // GetAll + Paging + X-Total-Count
     // Cleaning
     // Measurement
     // Classification
     // Notification
+    // Stats
+    // PooCount
 }

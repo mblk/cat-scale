@@ -29,7 +29,7 @@ else
 
         <hr />
         <div class="d-inline-flex">
-            <div style="width: 100px" class="align-self-center">
+            <div class="align-self-center me-2">
                 Zeitraum:
             </div>
             <div class="btn-group btn-group-sm mt-1 mb-1" role="group">
@@ -37,17 +37,6 @@ else
                 {
                     <button type="button" class="btn btn-sm btn-@(_timeFilter == filter ? "primary" : "secondary")" @onclick="@(() => _timeFilter = filter)">@GetFilterText(filter)</button>
                 }
-            </div>
-        </div>
-        <br />
-        
-        <div class="d-inline-flex">
-            <div style="width: 100px" class="align-self-center">
-                Temperatur:
-            </div>
-            <div class="btn-group btn-group-sm mt-1 mb-1">
-                <button type="button" class="btn btn-sm btn-@(_includeTemperature ? "primary" : "secondary")" @onclick="@(() => _includeTemperature = true)">Anzeigen</button>
-                <button type="button" class="btn btn-sm btn-@(!_includeTemperature ? "primary" : "secondary")" @onclick="@(() => _includeTemperature = false)">Verstecken</button>
             </div>
         </div>
         <br />
@@ -92,8 +81,6 @@ else
     private readonly TimeFilter[] _timeFilters = new[] { TimeFilter.All, TimeFilter.Month, TimeFilter.Week, TimeFilter.Day };
     private TimeFilter _timeFilter = TimeFilter.All;
 
-    private bool _includeTemperature = false;
-
     private static string GetFilterText(TimeFilter filter) => filter switch
     {
         TimeFilter.Month => "Monat",
@@ -119,7 +106,7 @@ else
     private string GetCatGraphUri(int catId)
     {
         var (minTime, maxTime) = GetStartEndTimeFilter();
-        return CatScaleService.GetCatGraphUri(catId, minTime, maxTime, _includeTemperature);
+        return CatScaleService.GetCatGraphUri(catId, minTime, maxTime);
     }
 
     private string GetCombinedCatGraphUri(int catId1, int catId2, bool sameAxis)

@@ -69,7 +69,7 @@ public interface ICatScaleService // TODO split up?
     //
 
     string GetScaleEventGraphUri(int id);
-    string GetCatGraphUri(int id, DateTimeOffset? minTime, DateTimeOffset? maxTime, bool includeTemperature);
+    string GetCatGraphUri(int id, DateTimeOffset? minTime, DateTimeOffset? maxTime);
     string GetCombinedCatGraphUri(int id1, int id2, bool sameAxis, DateTimeOffset? minTime, DateTimeOffset? maxTime);
     string GetToiletGraphUri(int id, ToiletSensorValue sensorValue);
     string GetCombinedToiletGraphUri(int id, ToiletSensorValue sensorValue1, ToiletSensorValue sensorValue2);
@@ -335,11 +335,9 @@ public class CatScaleService : ICatScaleService
         return GetGraphUri($"api/Graph/GetScaleEvent?scaleEventId={id}");
     }
 
-    public string GetCatGraphUri(int id, DateTimeOffset? minTime, DateTimeOffset? maxTime, bool includeTemperature)
+    public string GetCatGraphUri(int id, DateTimeOffset? minTime, DateTimeOffset? maxTime)
     {
-        var path = AddTimeFilterToPath($"api/Graph/GetCatMeasurements?catId={id}", minTime, maxTime);
-        path += $"&includeTemperature={includeTemperature}";
-        return GetGraphUri(path);
+        return GetGraphUri(AddTimeFilterToPath($"api/Graph/GetCatMeasurements?catId={id}", minTime, maxTime));
     }
 
     public string GetCombinedCatGraphUri(int id1, int id2, bool sameAxis, DateTimeOffset? minTime,

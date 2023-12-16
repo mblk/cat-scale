@@ -1,5 +1,5 @@
 //
-// postgres
+// postgres backup
 //
 
 docker run --name pg -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword -d postgres
@@ -10,5 +10,9 @@ psql --host=localhost --username=postgres --password
 
 psql --host=localhost --username=postgres --password -d catscale1 -f backup
 
+//
+// ssh tunnel
+//
 
+ssh -L localhost:5432:localhost:5432 user@vserver
 

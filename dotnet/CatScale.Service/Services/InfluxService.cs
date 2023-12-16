@@ -7,9 +7,9 @@ namespace CatScale.Service.Services;
 
 public interface IInfluxService
 {
-    Task<IEnumerable<(DateTimeOffset, double)>> GetRawData(DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value);
+    Task<IEnumerable<(DateTimeOffset, double)>> GetRawData(int toiletId, DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value);
 
-    Task<IEnumerable<(DateTimeOffset, double)>> GetAggregatedData(DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value);
+    Task<IEnumerable<(DateTimeOffset, double)>> GetAggregatedData(int toiletId, DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value);
 }
 
 public class InfluxService : IInfluxService
@@ -31,8 +31,10 @@ public class InfluxService : IInfluxService
         _influxBucket = configuration["Influx:Bucket"] ?? throw new ArgumentException("missing config Influx:Bucket");
     }
     
-    public async Task<IEnumerable<(DateTimeOffset, double)>> GetRawData(DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value)
+    public async Task<IEnumerable<(DateTimeOffset, double)>> GetRawData(int toiletId, DateTimeOffset start, DateTimeOffset end, ToiletSensorValue value)
     {
+        // TODO filter by toiletId
+        
         var flux = new StringBuilder()
             .AppendLine($"from(bucket: \"{_influxBucket}\")")
             .AppendLine($"|> range(start: {ConvertDateTimeOffsetToString(start)}, stop: {ConvertDateTimeOffsetToString(end)})")
@@ -43,9 +45,11 @@ public class InfluxService : IInfluxService
         return await GetDataFromFluxQuery(flux);
     }
 
-    public async Task<IEnumerable<(DateTimeOffset, double)>> GetAggregatedData(DateTimeOffset start, DateTimeOffset end,
+    public async Task<IEnumerable<(DateTimeOffset, double)>> GetAggregatedData(int toiletId, DateTimeOffset start, DateTimeOffset end,
         ToiletSensorValue value)
     {
+        // TODO filter by toiletId
+        
         var flux = new StringBuilder()
             .AppendLine($"from(bucket: \"{_influxBucket}\")")
             .AppendLine($"|> range(start: {ConvertDateTimeOffsetToString(start)}, stop: {ConvertDateTimeOffsetToString(end)})")

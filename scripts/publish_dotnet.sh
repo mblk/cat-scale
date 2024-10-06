@@ -1,6 +1,8 @@
 #!/bin/bash
 
-PUBLISH_OPTIONS="-r linux-x64 -c Release --no-self-contained -v minimal"
+#PUBLISH_OPTIONS="-r linux-x64 -c Release --no-self-contained -v minimal"
+
+PUBLISH_OPTIONS="-r linux-x64 -c Release -p:PublishSingleFile=true --self-contained true -v minimal"
 PUBLISH_DIR="publish"
 
 if [ -d $PUBLISH_DIR ]; then

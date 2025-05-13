@@ -1,10 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35931.197 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CatScale.Service", "CatScale.Service\CatScale.Service.csproj", "{70EAEE0D-A313-4D6C-A050-A63937CEAA9E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CatScale.UI.BlazorServer", "CatScale.UI.BlazorServer\CatScale.UI.BlazorServer.csproj", "{590BA2C8-1E8C-4D49-A1F4-72D0477C7E8C}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CatScale.UI.BlazorWasm", "CatScale.UI.BlazorWasm\CatScale.UI.BlazorWasm.csproj", "{428A642C-0C04-40EC-936D-E5887A282D42}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CatScale.Domain", "CatScale.Domain\CatScale.Domain.csproj", "{3003FF35-EC33-4F84-AF82-B5F28A7D6579}"
 EndProject
@@ -38,10 +39,6 @@ Global
 		{590BA2C8-1E8C-4D49-A1F4-72D0477C7E8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{590BA2C8-1E8C-4D49-A1F4-72D0477C7E8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{590BA2C8-1E8C-4D49-A1F4-72D0477C7E8C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{428A642C-0C04-40EC-936D-E5887A282D42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{428A642C-0C04-40EC-936D-E5887A282D42}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{428A642C-0C04-40EC-936D-E5887A282D42}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{428A642C-0C04-40EC-936D-E5887A282D42}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3003FF35-EC33-4F84-AF82-B5F28A7D6579}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3003FF35-EC33-4F84-AF82-B5F28A7D6579}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3003FF35-EC33-4F84-AF82-B5F28A7D6579}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -70,6 +67,9 @@ Global
 		{98CFE826-D792-4BC4-9C0B-2469872BFE06}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{98CFE826-D792-4BC4-9C0B-2469872BFE06}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{98CFE826-D792-4BC4-9C0B-2469872BFE06}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{DB1C2ADC-B98F-4907-9AB5-94C987CA5A10} = {855A4188-9108-4DD6-80B6-B3A54AAAB52A}

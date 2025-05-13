@@ -1,4 +1,4 @@
-# Automated weight monitoring for chubby Cats 🐱🐱
+# Automated weight monitoring for chubby cats 🐱
 [![CI-dotnet](https://github.com/mblk/cat-scale/actions/workflows/dotnet.yml/badge.svg?branch=main)](https://github.com/mblk/cat-scale/actions/workflows/dotnet.yml)
 
 This project is a hobby endeavor focused at monitoring and managing the weight of cats using an automated scale.

@@ -278,7 +278,7 @@ public class CatScaleService : ICatScaleService
     public async Task<FeedingDto> CreateFeeding(int catId, int foodId, DateTimeOffset timestamp, double offered,
         double eaten)
     {
-        var response = (await _httpClient.PutAsJsonAsync("api/Cat/Create",
+        var response = (await _httpClient.PutAsJsonAsync("api/Feeding/Create",
                 new CreateFeedingRequest(catId, foodId, timestamp, offered, eaten)))
             .EnsureSuccessStatusCode();
 

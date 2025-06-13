@@ -97,13 +97,16 @@ else
     }
 
     // TODO move to utils?
-    // TODO check if correct
     private static int CalculateAge(CatDto cat)
     {
-        var dob = cat.DateOfBirth.ToDateTime(TimeOnly.MinValue);
-        var age = DateTime.Now - dob;
-        var years = age.TotalDays / 365;
-        return (int)years;
+        var dob = cat.DateOfBirth;
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var age = today.Year - dob.Year;
+        if (dob > today.AddYears(-age))
+        {
+            age--;
+        }
+        return age;
     }
 
 }

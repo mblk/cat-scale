@@ -230,10 +230,14 @@ else
 
     private static int CalculateAge(DateOnly dateOfBirth)
     {
-        var dob = dateOfBirth.ToDateTime(TimeOnly.MinValue);
-        var age = DateTime.Now - dob;
-        var years = age.TotalDays / 365;
-        return (int)years;
+        var dob = dateOfBirth;
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var age = today.Year - dob.Year;
+        if (dob > today.AddYears(-age))
+        {
+            age--;
+        }
+        return age;
     }
 
 }
